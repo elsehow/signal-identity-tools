@@ -5,6 +5,20 @@ let signal = require('signal-protocol')
 let valEncoding = require('../levelValueEncoding')
 let newDb = () => memdb({valueEncoding: valEncoding})
 let ks = keyserver(newDb())
+
+// TODO move these into core lib
+function sessionBuilder (myStore, theirName, theirKeyId) {
+  // now, bob can build a session cipher with which he can speak to alice
+  var addr = new signal.SignalProtocolAddress(theirName, theirKeyId)
+  var builder = new signal.SessionBuilder(myStore, addr)
+  return builder
+}
+function sessionCipher (myStore, theirName, theirKeyId) {
+  var addr = new signal.SignalProtocolAddress(theirName, theirKeyId)
+  var cipher = new signal.SessionCipher(myStore, addr);
+  return cipher
+}
+
 // alice makes a client, and generates an identity
 let alice = client(newDb())
 alice.freshIdentity(1, function (err, id) {
@@ -18,28 +32,23 @@ alice.freshIdentity(1, function (err, id) {
       // without registering (!) bob gets alice's pre-key bundle
       ks.fetchPreKeyBundle('alice', function (err, aliceBundle) {
         // now, bob can build a session cipher with which he can speak to alice
-        var aliceAddr = new signal.SignalProtocolAddress("alice", 1)
-        var builder = new signal.SessionBuilder(bob, aliceAddr)
-        builder.processPreKey(aliceBundle)
+        sessionBuilder(bob, 'alice', 1).processPreKey(aliceBundle)
             .then(() => {
-              var bobAddr = new signal.SignalProtocolAddress("bob", 1)
-              var aliceSessionCipher = new signal.SessionCipher(alice, bobAddr);
-              var bobSessionCipher = new signal.SessionCipher(bob, aliceAddr);
-              return [aliceSessionCipher, bobSessionCipher]
-            }).then(function ([aliceCipher, bobCipher]) {
+              var bobSessionCipher = sessionCipher(bob, 'alice', 1)
+              var aliceSessionCipher = sessionCipher(alice, 'bob', 1)
               // now bob can initiate a conversation with alice
-              let bobEnc = str => bobCipher.encrypt(new Buffer(str))
+              let bobEnc = str => bobSessionCipher.encrypt(new Buffer(str))
               return bobEnc('hello sweet world')
                 .then(ct => {
                   // bob sends a prekey whisper message to introduce himself
                   // alice decrypts it
-                  return aliceCipher.decryptPreKeyWhisperMessage(ct.body, 'binary')
+                  return aliceSessionCipher.decryptPreKeyWhisperMessage(ct.body, 'binary')
                 }).then(plaintextArrayBuf => {
                   // now she will encrypt the same message back to him
-                  return aliceCipher.encrypt(plaintextArrayBuf)
+                  return aliceSessionCipher.encrypt(plaintextArrayBuf)
                 }).then(ct => {
                   // since they are introduced, bob can now decrypt whisper messages
-                  return bobCipher.decryptWhisperMessage(ct.body, 'binary')
+                  return bobSessionCipher.decryptWhisperMessage(ct.body, 'binary')
                 }).then(plaintextArrayBuf => {
                   // conver the plaintext array buffer back to str
                   let str = new Buffer.from(plaintextArrayBuf).toString()
