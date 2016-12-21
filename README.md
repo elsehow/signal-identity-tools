@@ -13,7 +13,11 @@ a keyserver and id generation tools for the [signal-protocol](https://github.com
 ```javascript
 ```
 
-## install
+## todos & cavaeats
+
+- No rate-limiting or access control on PreKey fetches
+  - This is necessary to make sure people don't deplete your one-time prekeys
+- No validating uploaded keys (yet)
 
 ## api
 
@@ -87,6 +91,7 @@ In the signal protocol, [users must upload unsigned PreKeys regularly](https://w
 This uploads new, unsigned (one-time) PreKeys for name `name`, where `unsignedPreKeys` come from the callback value of `idtools.newUnsignedPreKeys`'s `.sanitized`.
 
 `cb(err)`
+
 
 ## license
 
