@@ -21,8 +21,12 @@ now you can edit js files in src/ and test/ - tests will automatically re-run
 
 ## todo
 
-- [ ] Make a level-using Signal store
-  - [ ] Test it in keyserver
+- [x] Make a level-using Signal store
+  - [x] Test it in keyserver
 - [ ] Design an api for `client(level)`
   - [ ] Guessing it will be level methods + idtools methods
   - [ ] Potentially also methods for session ciphers
+  
+  
+- [ ] Document the keyserver / client 
+  - [ ] One for key management (of secret keys), the other servering (public) identities for many clients

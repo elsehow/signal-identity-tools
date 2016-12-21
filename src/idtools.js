@@ -3,13 +3,27 @@ let KeyHelper = signal.KeyHelper;
 let last = arr => arr[arr.length-1]
 
 /*
-calls back on an object
+  elsehow 12/21/16
+  berkeley
 
-  { registrationId, identityKeyPair, store, publicIdentity }
 
-publicIdentity
+  these methods call back on an object
+
+  { complete, sanitized, store }
+
+  `complete` includes secret keys
+
+  `sanitized` is safe to send to keyserver
 
 */
+
+module.exports = {
+  freshIdentity: freshIdentity,
+  newSignedPreKey: newSignedPreKey,
+  // this one does not call back on `store`
+  // - it doesn't need a store
+  newUnsignedPreKeys: newUnsignedPreKeys,
+}
 
 function unsignedPreKeysPromise (keyId, n) {
   let ps = []
@@ -23,7 +37,7 @@ function cleanUnsigned (preKey) {
     keyId: preKey.keyId,
     publicKey: preKey.keyPair.pubKey,
   }
-}
+den}
 
 function cleanSigned (preKey) {
   return {
@@ -43,10 +57,9 @@ function sanitize (identity) {
   }
 }
 
-function freshIdentity (keyId, store, cb, opts={ nUnsignedPreKeys: 10 }) {
+function freshIdentity (store, keyId, cb, opts={ nUnsignedPreKeys: 10 }) {
 
   let registrationId = KeyHelper.generateRegistrationId()
-  store.put('registrationId', registrationId);
   let identity = {
     registrationId: registrationId,
     identityKeyPair: null,
@@ -55,37 +68,40 @@ function freshIdentity (keyId, store, cb, opts={ nUnsignedPreKeys: 10 }) {
   }
 
   let preKeysP =  unsignedPreKeysPromise(keyId, opts.nUnsignedPreKeys)
-      .then(function (preKeys) {
+      .then((preKeys) => {
         identity.unsignedPreKeys = preKeys
         // save the last one in the store
         let preKey = last(preKeys)
-        store.storePreKey(preKey.keyId, preKey.keyPair);
+        return store.storePreKey(preKey.keyId, preKey.keyPair);
       })
   let identityKeyP = KeyHelper.generateIdentityKeyPair()
-      .then(function (idKp) {
+      .then((idKp) => {
         identity.identityKeyPair = idKp
-        store.put('identityKey', idKp)
-        return KeyHelper.generateSignedPreKey(idKp, keyId)
-      }).then(function (signedPreKey) {
+        return Promise.all([
+          store.put('identityKey', idKp),
+          KeyHelper.generateSignedPreKey(idKp, keyId)
+        ])
+      }).then((res) => {
+        let signedPreKey = res[1]
         identity.signedPreKey = signedPreKey
-        store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
+        return store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair)
       })
 
   Promise.all([
+    store.put('registrationId', registrationId),
     preKeysP,
     identityKeyP,
-  ]).then(function (_) {
+  ]).then((_) => {
     let r = {
       complete: identity,
       sanitized: sanitize(identity),
       store: store,
     }
     cb(null, r)
-
   }).catch(cb)
 }
 
-function newSignedPreKey (identity, keyId, store, cb) {
+function newSignedPreKey (store, identity, keyId, cb) {
   KeyHelper.generateSignedPreKey(identity.complete.identityKeyPair, keyId)
     .then(function (signedPreKey) {
       store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
@@ -111,8 +127,3 @@ function newUnsignedPreKeys (n, keyId, cb) {
   return
 }
 
-module.exports = {
-  freshIdentity: freshIdentity,
-  newSignedPreKey: newSignedPreKey,
-  newUnsignedPreKeys: newUnsignedPreKeys,
-}

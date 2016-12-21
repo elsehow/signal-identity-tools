@@ -20,6 +20,8 @@
     "deep-equal": "^1.0.1",
     "is-array-buffer": "^0.1.0",
     "lodash.omit": "^4.5.0",
-    "msgpack-lite": "^0.1.26"
+    "lodash.partial": "^4.2.1",
+    "msgpack-lite": "^0.1.26",
+    "xtend": "^4.0.1"
   }
 }
