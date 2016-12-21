@@ -6,6 +6,7 @@ var idtools = require('../idtools')
 
 var ALICE_ADDRESS = new signal.SignalProtocolAddress("+14151111111", 1);
 var BOB_ADDRESS   = new signal.SignalProtocolAddress("+14152222222", 1);
+let dbPath = '/tmp/kserver'
 
 // utilities for setting up level instances
 var msgpack = require('msgpack-lite')
@@ -185,8 +186,7 @@ test('UPLOAD ADDITONAL one-time prekeys', t => {
 // })
 
 test('SETUP and TAREDOWN and PERSIST', t => {
-  let path = '/tmp/kserver'
-  let ks = keyserver(dbAt(path))
+  let ks = keyserver(dbAt(dbPath))
   genTestId(function (err, identity) {
     let pubid = identity.sanitized
     let n = ALICE_ADDRESS.getName()
@@ -195,7 +195,7 @@ test('SETUP and TAREDOWN and PERSIST', t => {
       ks.close(function (err) {
         t.notOk(err,
                 'no errors closing')
-        ks = keyserver(dbAt(path))
+        ks = keyserver(dbAt(dbPath))
         ks.fetchPreKeyBundle(n, function (err, bundle) {
           t.notOk(err)
           t.ok(bundle.identityKey,
@@ -211,8 +211,7 @@ test('SETUP and TAREDOWN and PERSIST', t => {
 
 test.onFinish(() => {
   console.log('finishing...')
-  let path = '/tmp/kserver'
-  let lvl = level(path)
+  let lvl = level(dbPath)
   lvl.del(ALICE_ADDRESS.getName(), function () {
     console.log('finished')
   })

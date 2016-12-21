@@ -8,6 +8,8 @@ npm install signal-identity-tools
 
 a keyserver and id generation tools for the [signal-protocol](https://github.com/elsehow/signal-protocol)
 
+[![Build Status](https://travis-ci.org/elsehow/signal-identity-tools.svg?branch=master)](https://travis-ci.org/elsehow/signal-identity-tools)
+
 ## example
 
 ```javascript
