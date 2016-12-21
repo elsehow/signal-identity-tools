@@ -20,9 +20,11 @@ the example does not cover uploading new `unsignedPreKeys`, or replacing `signed
 
 ## todos & cavaeats
 
+- No validating uploaded keys (yet)
+  - See [#1](/../../issues/1)
 - No rate-limiting or access control on PreKey fetches
   - This is necessary to make sure people don't deplete your one-time prekeys
-- No validating uploaded keys (yet)
+  - You'll implement this on your transport layer - see below
 - The keyserver is just an API
   - You can wrap it in your own transport layer (HTTP, WS, etc)
 
