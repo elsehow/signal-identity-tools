@@ -9,6 +9,8 @@ module.exports = function (level) {
   var db = {}
 
   function register (name, publicIdentity, cb) {
+    // TODO we could verify public identity with signatures ?
+    //      https://github.com/elsehow/signal-protocol/blob/master/src/SessionBuilder.js#L23
     return level.get(name, function (err, value) {
       if (err && err.type !== 'NotFoundError')
         return cb(err)
@@ -44,17 +46,30 @@ module.exports = function (level) {
   }
 
   function replaceSignedPreKey (name, signedPreKey, cb) {
-    if (!db[name])
-      return cb('Name not found.')
-    db[name].signedPreKey = signedPreKey
-    cb(null, name)
+    return level.get(name, function (err, bundle) {
+      if (err)
+        return cb(err)
+      if (!bundle)
+        return('Name not found.')
+      let valErr = validate.signedPreKey(signedPreKey)
+      if (valErr)
+        return cb(valErr)
+      bundle.signedPreKey = signedPreKey
+      level.put(name, bundle, cb)
+      return
+    })
   }
 
+  // TODO validate
   function uploadUnsignedPreKeys (name, prekeys, cb) {
-    if (!db[name])
-      return cb('Name not found.')
-    db[name].unsignedPreKeys.push(prekeys)
-    return cb(null, name)
+    return level.get(name, function (err, bundle) {
+      if (err)
+        return cb(err)
+      if (!bundle)
+        return('Name not found.')
+      bundle.unsignedPreKeys.push(prekeys)
+      level.put(name, bundle, cb)
+    })
   }
 
 

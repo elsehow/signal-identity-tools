@@ -94,7 +94,7 @@ function newSignedPreKey (identity, keyId, store, cb) {
         complete: signedPreKey,
         sanitized: cleanSigned(signedPreKey),
       }
-      cb(null, signedPreKey)
+      cb(null, r)
     }).catch(cb)
 }
 

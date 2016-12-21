@@ -7,6 +7,21 @@ var idtools = require('../idtools')
 var ALICE_ADDRESS = new signal.SignalProtocolAddress("+14151111111", 1);
 var BOB_ADDRESS   = new signal.SignalProtocolAddress("+14152222222", 1);
 
+// utilities for setting up level instances
+var msgpack = require('msgpack-lite')
+let valueEncoding = {encode: msgpack.encode,
+                     decode: msgpack.decode,
+                     buffer: true,
+                    }
+var memdb = require('memdb')
+let level = require('level')
+function dbAt (path){
+  let opts = {valueEncoding: valueEncoding}
+  if (!path)
+    return memdb(opts)
+  return level(path, opts)
+}
+
 function genTestId (cb) {
   idtools.freshIdentity(1, new SignalStore(), cb)
 }
@@ -49,106 +64,106 @@ function testConvo (aliceBundle, aliceIdentity, bobIdentity, t) {
 
 }
 
-// test('sanity', t => {
-//   t.ok(keyserver)
-//   t.deepEquals(typeof(keyserver), 'function')
-//   let ks = keyserver()
-//   t.deepEquals(typeof(ks.register),
-//                'function')
-//   t.deepEquals(typeof(ks.fetchPreKeyBundle),
-//                'function')
-//   t.end()
-// })
+test('sanity', t => {
+  t.ok(keyserver)
+  t.deepEquals(typeof(keyserver), 'function')
+  let ks = keyserver()
+  t.deepEquals(typeof(ks.register),
+               'function')
+  t.deepEquals(typeof(ks.fetchPreKeyBundle),
+               'function')
+  t.end()
+})
 
-// test('REGISTER a prekey', t => {
-//   let ks = keyserver()
-//   genTestId(function (err, identity) {
-//     // use the sanitized identity for public keyserver
-//     let pubid = identity.sanitized
-//     ks.register('elsehow', pubid, function (err) {
-//       t.notOk(err)
-//       t.end()
-//     })
-//   })
-// })
+test('REGISTER a prekey', t => {
+  let ks = keyserver(dbAt())
+  genTestId(function (err, identity) {
+    // use the sanitized identity for public keyserver
+    let pubid = identity.sanitized
+    ks.register('elsehow', pubid, function (err) {
+      t.notOk(err)
+      t.end()
+    })
+  })
+})
 
-// test('bad prekey REJECT', t => {
-//   let ks = keyserver()
-//   genTestId(function (err, identity) {
-//     // NO NO don't push your compelte identity
-//     let BADpubid = identity.complete
-//     ks.register('elsehow', BADpubid, function (err) {
-//       t.ok(err, err)
-//       t.end()
-//     })
-//   })
-// })
+test('bad prekey REJECT', t => {
+  let ks = keyserver(dbAt())
+  genTestId(function (err, identity) {
+    // NO NO don't push your compelte identity
+    let BADpubid = identity.complete
+    ks.register('elsehow', BADpubid, function (err) {
+      t.ok(err, err)
+      t.end()
+    })
+  })
+})
 
-// test('fetch that PREKEY BUNDLE and CHAT', t => {
-//   let ks = keyserver()
-//   // alice generates an ID
-//   genTestId(function (err, aliceIdentity) {
-//     let aliceSanitized = aliceIdentity.sanitized
-//     // alice registers
-//     ks.register(ALICE_ADDRESS.getName(), aliceSanitized, function (err, id) {
-//       // bob generates an ID
-//       genTestId(function (err, bobIdentity) {
-//         // and fetches alice's bundle
-//         ks.fetchPreKeyBundle(ALICE_ADDRESS.getName(), function (err, aliceBundle) {
-//           testConvo(aliceBundle, aliceIdentity, bobIdentity, t).catch(t.notOk)
-//         })
-//       })
-//     })
-//   })
-// })
+test('fetch that PREKEY BUNDLE and CHAT', t => {
+  let ks = keyserver(dbAt())
+  // alice generates an ID
+  genTestId(function (err, aliceIdentity) {
+    let aliceSanitized = aliceIdentity.sanitized
+    // alice registers
+    ks.register(ALICE_ADDRESS.getName(), aliceSanitized, function (err, id) {
+      // bob generates an ID
+      genTestId(function (err, bobIdentity) {
+        // and fetches alice's bundle
+        ks.fetchPreKeyBundle(ALICE_ADDRESS.getName(), function (err, aliceBundle) {
+          testConvo(aliceBundle, aliceIdentity, bobIdentity, t).catch(t.notOk)
+        })
+      })
+    })
+  })
+})
 
-// test('REPLACE signed prekey', t => {
-//   let ks = keyserver()
-//   // alice generates an ID
-//   genTestId(function (err, aliceIdentity) {
-//     let aliceSanitized = aliceIdentity.sanitized
-//     // alice registers
-//     ks.register(ALICE_ADDRESS.getName(), aliceSanitized, function (err, id) {
-//       idtools.newSignedPreKey(aliceIdentity, 1, aliceIdentity.store, function (err, signedPreKey) {
-//         t.notOk(err)
-//         t.ok(signedPreKey)
-//         // replace on server
-//         ks.replaceSignedPreKey(ALICE_ADDRESS.getName(), signedPreKey.sanitized, function (err, res) {
-//           t.notOk(err)
-//           t.ok(res)
-//           t.end()
-//         })
-//       })
-//     })
-//   })
-// })
+test('REPLACE signed prekey', t => {
+  let ks = keyserver(dbAt())
+  let n = ALICE_ADDRESS.getName()
+  // alice generates an ID
+  genTestId(function (err, aliceIdentity) {
+    let aliceSanitized = aliceIdentity.sanitized
+    // alice registers
+    ks.register(n, aliceSanitized, function (err, id) {
+      idtools.newSignedPreKey(aliceIdentity, 1, aliceIdentity.store, function (err, signedPreKey) {
+        t.notOk(err)
+        t.ok(signedPreKey)
+        // replace on server
+        ks.replaceSignedPreKey(n, signedPreKey.sanitized, function (err) {
+          t.notOk(err)
+          t.end()
+        })
+      })
+    })
+  })
+})
 
-// test('UPLOAD ADDITONAL one-time prekeys', t => {
-//   let ks = keyserver()
-//   // alice generates an ID
-//   genTestId(function (err, aliceIdentity) {
-//     let aliceSanitized = aliceIdentity.sanitized
-//     // alice registers
-//     ks.register(ALICE_ADDRESS.getName(), aliceSanitized, function (err, id) {
-//       idtools.newUnsignedPreKeys(10, 1, function (err, prekeys) {
-//         t.notOk(err)
-//         t.equal(prekeys.complete.length, 10,
-//                 'prekes.complete is the right length')
-//         t.equal(prekeys.sanitized.length, 10,
-//                 'prekes.sanitized is the right length')
-//         // replace on server
-//         ks.uploadUnsignedPreKeys(ALICE_ADDRESS.getName(), prekeys.sanitized, function (err, res) {
-//           t.notOk(err)
-//           t.ok(res)
-//           t.end()
-//         })
-//       })
-//     })
-//   })
-// })
+test('UPLOAD ADDITONAL one-time prekeys', t => {
+  let ks = keyserver(dbAt())
+  // alice generates an ID
+  genTestId(function (err, aliceIdentity) {
+    let aliceSanitized = aliceIdentity.sanitized
+    // alice registers
+    ks.register(ALICE_ADDRESS.getName(), aliceSanitized, function (err, id) {
+      idtools.newUnsignedPreKeys(10, 1, function (err, prekeys) {
+        t.notOk(err)
+        t.equal(prekeys.complete.length, 10,
+                'prekes.complete is the right length')
+        t.equal(prekeys.sanitized.length, 10,
+                'prekes.sanitized is the right length')
+        // replace on server
+        ks.uploadUnsignedPreKeys(ALICE_ADDRESS.getName(), prekeys.sanitized, function (err) {
+          t.notOk(err)
+          t.end()
+        })
+      })
+    })
+  })
+})
 
+// TODO
 // test('chat with NO ONE-TIME PREKEYS?', t => {
-//   let ks = keyserver()
+//   let ks = keyserver(dbAt())
 //   idtools.freshIdentity(1, new SignalStore(), function (_, aliceIdentity) {
 //     ks.register(ALICE_ADDRESS.getName(), aliceIdentity.sanitized, function (_, _) {
 //       idtools.freshIdentity(1, new SignalStore(), function (_, bobIdentity) {
@@ -169,19 +184,10 @@ function testConvo (aliceBundle, aliceIdentity, bobIdentity, t) {
 //   })
 // })
 
-// test('support multiple UNSIGNED PREKEYS', t => {
-//   t.ok(null)
-//   t.end()
-// })
-var msgpack = require('msgpack-lite')
-let valueEncoding = {encode: msgpack.encode,
-                     decode: msgpack.decode,
-                     buffer: true,
-                    }
-let level = require('level')
+
 test('SETUP and TAREDOWN and PERSIST', t => {
   let path = '/tmp/kserver'
-  let ks = keyserver(level(path, {valueEncoding:valueEncoding}))
+  let ks = keyserver(dbAt(path))
   genTestId(function (err, identity) {
     let pubid = identity.sanitized
     let n = ALICE_ADDRESS.getName()
@@ -190,7 +196,7 @@ test('SETUP and TAREDOWN and PERSIST', t => {
       ks.close(function (err) {
         t.notOk(err,
                 'no errors closing')
-        ks = keyserver(level(path, {valueEncoding: valueEncoding}))
+        ks = keyserver(dbAt(path))
         ks.fetchPreKeyBundle(n, function (err, bundle) {
           t.notOk(err)
           t.ok(bundle.identityKey,
@@ -205,10 +211,10 @@ test('SETUP and TAREDOWN and PERSIST', t => {
 })
 
 test.onFinish(() => {
-  console.log('finishing')
+  console.log('finishing...')
   let path = '/tmp/kserver'
   let lvl = level(path)
   lvl.del(ALICE_ADDRESS.getName(), function () {
-    console.log('deleted')
+    console.log('finished')
   })
 })
