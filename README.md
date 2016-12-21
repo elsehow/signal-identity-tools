@@ -103,7 +103,6 @@ This uploads new, unsigned (one-time) PreKeys for name `name`, where `unsignedPr
 
 `cb(err)`
 
-
 ## license
 
 BSD

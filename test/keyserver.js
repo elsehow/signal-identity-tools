@@ -3,25 +3,12 @@ let SignalStore = require('signal-protocol/test/InMemorySignalProtocolStore')
 var signal = require('signal-protocol')
 var keyserver = require('../keyserver')
 var idtools = require('../idtools')
+var h = require('./helpers')
+let level = require('level')
 
 var ALICE_ADDRESS = new signal.SignalProtocolAddress("+14151111111", 1);
 var BOB_ADDRESS   = new signal.SignalProtocolAddress("+14152222222", 1);
 let dbPath = '/tmp/kserver'
-
-// utilities for setting up level instances
-var msgpack = require('msgpack-lite')
-let valueEncoding = {encode: msgpack.encode,
-                     decode: msgpack.decode,
-                     buffer: true,
-                    }
-var memdb = require('memdb')
-let level = require('level')
-function dbAt (path){
-  let opts = {valueEncoding: valueEncoding}
-  if (!path)
-    return memdb(opts)
-  return level(path, opts)
-}
 
 function genTestId (cb) {
   idtools.freshIdentity(1, new SignalStore(), cb)
@@ -77,7 +64,7 @@ test('sanity', t => {
 })
 
 test('REGISTER a prekey', t => {
-  let ks = keyserver(dbAt())
+  let ks = keyserver(h.dbAt())
   genTestId(function (err, identity) {
     // use the sanitized identity for public keyserver
     let pubid = identity.sanitized
@@ -89,7 +76,7 @@ test('REGISTER a prekey', t => {
 })
 
 test('bad prekey REJECT', t => {
-  let ks = keyserver(dbAt())
+  let ks = keyserver(h.dbAt())
   genTestId(function (err, identity) {
     // NO NO don't push your compelte identity
     let BADpubid = identity.complete
@@ -101,7 +88,7 @@ test('bad prekey REJECT', t => {
 })
 
 test('fetch that PREKEY BUNDLE and CHAT', t => {
-  let ks = keyserver(dbAt())
+  let ks = keyserver(h.dbAt())
   // alice generates an ID
   genTestId(function (err, aliceIdentity) {
     let aliceSanitized = aliceIdentity.sanitized
@@ -119,7 +106,7 @@ test('fetch that PREKEY BUNDLE and CHAT', t => {
 })
 
 test('REPLACE signed prekey', t => {
-  let ks = keyserver(dbAt())
+  let ks = keyserver(h.dbAt())
   let n = ALICE_ADDRESS.getName()
   // alice generates an ID
   genTestId(function (err, aliceIdentity) {
@@ -140,7 +127,7 @@ test('REPLACE signed prekey', t => {
 })
 
 test('UPLOAD ADDITONAL one-time prekeys', t => {
-  let ks = keyserver(dbAt())
+  let ks = keyserver(h.dbAt())
   // alice generates an ID
   genTestId(function (err, aliceIdentity) {
     let aliceSanitized = aliceIdentity.sanitized
@@ -164,7 +151,7 @@ test('UPLOAD ADDITONAL one-time prekeys', t => {
 
 // TODO
 // test('chat with NO ONE-TIME PREKEYS?', t => {
-//   let ks = keyserver(dbAt())
+//   let ks = keyserver(h.dbAt())
 //   idtools.freshIdentity(1, new SignalStore(), function (_, aliceIdentity) {
 //     ks.register(ALICE_ADDRESS.getName(), aliceIdentity.sanitized, function (_, _) {
 //       idtools.freshIdentity(1, new SignalStore(), function (_, bobIdentity) {
@@ -186,7 +173,7 @@ test('UPLOAD ADDITONAL one-time prekeys', t => {
 // })
 
 test('SETUP and TAREDOWN and PERSIST', t => {
-  let ks = keyserver(dbAt(dbPath))
+  let ks = keyserver(h.dbAt(dbPath))
   genTestId(function (err, identity) {
     let pubid = identity.sanitized
     let n = ALICE_ADDRESS.getName()
@@ -195,7 +182,7 @@ test('SETUP and TAREDOWN and PERSIST', t => {
       ks.close(function (err) {
         t.notOk(err,
                 'no errors closing')
-        ks = keyserver(dbAt(dbPath))
+        ks = keyserver(h.dbAt(dbPath))
         ks.fetchPreKeyBundle(n, function (err, bundle) {
           t.notOk(err)
           t.ok(bundle.identityKey,
