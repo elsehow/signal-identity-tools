@@ -12,14 +12,19 @@ a keyserver and id generation tools for the [signal-protocol](https://github.com
 
 ## example
 
-```javascript
-```
+see `example.js` for a starting point.
+
+the example does not cover uploading new `unsignedPreKeys`, or replacing `signedPreKeys`. see API for details.
+
+(eventually this will all be wrapped in a friendlier way).
 
 ## todos & cavaeats
 
 - No rate-limiting or access control on PreKey fetches
   - This is necessary to make sure people don't deplete your one-time prekeys
 - No validating uploaded keys (yet)
+- The keyserver is just an API
+  - You can wrap it in your own transport layer (HTTP, WS, etc)
 
 ## api
 
@@ -31,7 +36,9 @@ a keyserver and id generation tools for the [signal-protocol](https://github.com
 
 `store` is a signal-protocol store (see [signal-protocol](https://github.com/elsehow/signal-protocol)).
 
-Returns an object `{ complete, sanitized, store }`. `complete` is the full identity, with secret keys. `sanitized` is the public-facing version, ready to send to the keyserver.
+Calls back on `(err, { complete, sanitized, store })`. 
+
+`complete` is the full identity, with secret keys. `sanitized` is the public-facing version, ready to send to the keyserver.
 
 The `store` this method returns is the same `store` you pass in. I return it so you will notice that I am mutating it.
 
@@ -43,7 +50,9 @@ Like `freshIdentity`, calls back on `(err, { complete, sanitized, store } )`
 
 #### idtools.newUnsignedPreKeys(n, keyId, cb)
 
-Creates `n` unsigned (one-time) PreKeys. Calls back on `(err, { complete, sanitized } )`, where both `complete` and `sanitized` are lists of keys.
+Creates `n` unsigned (one-time) PreKeys. 
+
+Calls back on `(err, { complete, sanitized } )`, where both `complete` and `sanitized` are lists of keys of length `n`.
 
 `sanitized` is the public-facing version, ready to send to the keyserver.
 
@@ -80,7 +89,7 @@ Calls back on the keyserver's next PreKeyBundle for a user `name`, per [signal-p
 
 #### ks.replaceSignedPreKey(name, signedPreKey, cb)
 
-In the signal protocol, [users should replace their signed PreKeys occasionally](https://whispersystems.org/docs/specifications/x3dh/). 
+In the Signal protocol, [users should replace their signed PreKeys occasionally](https://whispersystems.org/docs/specifications/x3dh/). 
 
 This registers a new Signed PreKey for name, `name`, where `signedPreKey` comes from the callback value of `idtools.newSignedPreKey`'s `.sanitized`.
 
@@ -88,7 +97,7 @@ This registers a new Signed PreKey for name, `name`, where `signedPreKey` comes 
 
 #### ks.uploadUnsignedPreKeys(name, unisgnedPreKeys, cb)
 
-In the signal protocol, [users must upload unsigned PreKeys regularly](https://whispersystems.org/docs/specifications/x3dh/). 
+In the Signal protocol, [users must upload unsigned PreKeys regularly](https://whispersystems.org/docs/specifications/x3dh/). 
 
 This uploads new, unsigned (one-time) PreKeys for name `name`, where `unsignedPreKeys` come from the callback value of `idtools.newUnsignedPreKeys`'s `.sanitized`.
 
