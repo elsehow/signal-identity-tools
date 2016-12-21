@@ -12,6 +12,8 @@
     "tape": "^4.5.1"
   },
   "dependencies": {
+    "deep-equal": "^1.0.1",
+    "is-array-buffer": "^0.1.0",
     "lodash.omit": "^4.5.0"
   }
 }
