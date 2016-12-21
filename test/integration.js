@@ -1,28 +1,23 @@
 let test = require('tape')
-// let SignalStore = require('signal-protocol/test/InMemorySignalProtocolStore')
-var signal = require('signal-protocol')
 var keyserver = require('../keyserver')
 var client = require('../client')
-
-var ALICE_ADDRESS = new signal.SignalProtocolAddress("+14151111111", 1);
-var BOB_ADDRESS   = new signal.SignalProtocolAddress("+14152222222", 1);
-let dbPath = '/tmp/kserver'
-
 let valEncoding = require('../levelValueEncoding')
 let memdb = require('memdb')
 let level = require('level')
 let levelDb = () => level(dbPath, {valueEncoding: valEncoding})
 let newDb = () => memdb({valueEncoding: valEncoding})
+let dbPath = '/tmp/kserver'
+
 
 function testConvo (aliceBundle, aliceIdentity, bobIdentity, t) {
   // get signal to accept the pubkey bundle
-  var builder = new signal.SessionBuilder(bobIdentity.store, ALICE_ADDRESS)
+  var builder = bobIdentity.sessionBuilder('alice', 1)
   return builder.processPreKey(aliceBundle)
     .then(() => {
       t.ok(aliceIdentity)
       t.ok(bobIdentity)
-      var aliceSessionCipher = new signal.SessionCipher(aliceIdentity.store, BOB_ADDRESS);
-      var bobSessionCipher = new signal.SessionCipher(bobIdentity.store, ALICE_ADDRESS);
+      var aliceSessionCipher = aliceIdentity.sessionCipher('bob', 1)
+      var bobSessionCipher = bobIdentity.sessionCipher('alice', 1)
       return bobSessionCipher
         .encrypt(new Buffer('hello'))
         .then(ct => {
@@ -93,7 +88,7 @@ test('bad prekey REJECT', t => {
 test('fetch that PREKEY BUNDLE and CHAT', t => {
   let ks = keyserver(newDb())
   let alice = client(newDb())
-  let name = ALICE_ADDRESS.getName()
+  let name = 'alice'
   alice.freshIdentity(1, function (err, aliceIdentity) {
     let aliceSanitized = aliceIdentity.sanitized
     // alice registers
@@ -103,7 +98,7 @@ test('fetch that PREKEY BUNDLE and CHAT', t => {
       bob.freshIdentity(1, function (err, bobIdentity) {
         // and fetches alice's bundle
         ks.fetchPreKeyBundle(name, function (err, aliceBundle) {
-          testConvo(aliceBundle, aliceIdentity, bobIdentity, t).catch(t.notOk)
+          testConvo(aliceBundle, alice, bob, t).catch(t.notOk)
         })
       })
     })
@@ -113,7 +108,7 @@ test('fetch that PREKEY BUNDLE and CHAT', t => {
 test('REPLACE signed prekey', t => {
   let ks = keyserver(newDb())
   let alice = client(newDb())
-  let n = ALICE_ADDRESS.getName()
+  let n = 'alice'
   // alice generates an ID
   alice.freshIdentity(1, function (err, aliceIdentity) {
     let aliceSanitized = aliceIdentity.sanitized
@@ -135,7 +130,7 @@ test('REPLACE signed prekey', t => {
 test('UPLOAD ADDITONAL one-time prekeys', t => {
   let ks = keyserver(newDb())
   let alice = client(newDb())
-  let n = ALICE_ADDRESS.getName()
+  let n = 'alice'
   // alice generates an ID
   alice.freshIdentity(1, function (err, aliceIdentity) {
     let aliceSanitized = aliceIdentity.sanitized
@@ -185,7 +180,7 @@ test('SETUP and TAREDOWN and PERSIST', t => {
   let c = client(newDb())
   c.freshIdentity(1, function (err, identity) {
     let pubid = identity.sanitized
-    let n = ALICE_ADDRESS.getName()
+    let n = 'alice'
     ks.register(n, pubid, function (err) {
       t.notOk(err)
       ks.close(function (err) {
@@ -208,7 +203,7 @@ test('SETUP and TAREDOWN and PERSIST', t => {
 test.onFinish(() => {
   console.log('finishing...')
   let lvl = level(dbPath)
-  lvl.del(ALICE_ADDRESS.getName(), function () {
+  lvl.del('alice', function () {
     console.log('finished')
   })
 })

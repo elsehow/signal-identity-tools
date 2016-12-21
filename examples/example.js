@@ -1,23 +1,9 @@
 let memdb = require('memdb')
 let client = require('../client')
 let keyserver = require('../keyserver')
-let signal = require('signal-protocol')
 let valEncoding = require('../levelValueEncoding')
 let newDb = () => memdb({valueEncoding: valEncoding})
 let ks = keyserver(newDb())
-
-// TODO move these into core lib
-function sessionBuilder (myStore, theirName, theirKeyId) {
-  // now, bob can build a session cipher with which he can speak to alice
-  var addr = new signal.SignalProtocolAddress(theirName, theirKeyId)
-  var builder = new signal.SessionBuilder(myStore, addr)
-  return builder
-}
-function sessionCipher (myStore, theirName, theirKeyId) {
-  var addr = new signal.SignalProtocolAddress(theirName, theirKeyId)
-  var cipher = new signal.SessionCipher(myStore, addr);
-  return cipher
-}
 
 // alice makes a client, and generates an identity
 let alice = client(newDb())
@@ -32,10 +18,10 @@ alice.freshIdentity(1, function (err, id) {
       // without registering (!) bob gets alice's pre-key bundle
       ks.fetchPreKeyBundle('alice', function (err, aliceBundle) {
         // now, bob can build a session cipher with which he can speak to alice
-        sessionBuilder(bob, 'alice', 1).processPreKey(aliceBundle)
+        bob.sessionBuilder('alice', 1).processPreKey(aliceBundle)
             .then(() => {
-              var bobSessionCipher = sessionCipher(bob, 'alice', 1)
-              var aliceSessionCipher = sessionCipher(alice, 'bob', 1)
+              var bobSessionCipher = bob.sessionCipher('alice', 1)
+              var aliceSessionCipher = alice.sessionCipher('bob', 1)
               // now bob can initiate a conversation with alice
               let bobEnc = str => bobSessionCipher.encrypt(new Buffer(str))
               return bobEnc('hello sweet world')
