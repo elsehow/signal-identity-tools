@@ -23,10 +23,19 @@ now you can edit js files in src/ and test/ - tests will automatically re-run
 
 - [x] Make a level-using Signal store
   - [x] Test it in keyserver
-- [ ] Design an api for `client(level)`
-  - [ ] Guessing it will be level methods + idtools methods
-  - [ ] Potentially also methods for session ciphers
+- [x] Design an api for `client(level)`
+  - [x] Guessing it will be level methods + idtools methods
+  - [ ] Methods also for session ciphers
+- [ ] Emit an event when a user's low on prekeys
+  - [ ] We handle the details of on the transport layer
   
   
 - [ ] Document the keyserver / client 
   - [ ] One for key management (of secret keys), the other servering (public) identities for many clients
+
+
+## post-notes
+
+- [ ] Imagine what can be done with socket.io message delivery
+  - [ ] Imagine using that to coordinate other activities
+  - [ ] 1:1 torrent? Netcat? Google Doc / hyperpad?

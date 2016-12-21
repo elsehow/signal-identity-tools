@@ -54,9 +54,7 @@ alice.freshIdentity(1, function (err, id) {
                   let str = new Buffer.from(plaintextArrayBuf).toString()
                   console.log(str)
                 })
-            }).catch(err => {
-              console.log('ERR!', err)
-            })
+            }).catch(err => console.log('ERR!', err))
       })
     })
   })
