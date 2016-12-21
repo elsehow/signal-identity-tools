@@ -64,6 +64,9 @@ function validateUnsignedPreKey (p) {
   ]
   return check(schema)
 }
+function validateUnsigned (prekeys) {
+  return firstNonNull(prekeys.map(validateUnsignedPreKey))
+}
 function validateSignedPreKey (p) {
   let props = ['keyId', 'publicKey', 'signature']
   var schema = [
@@ -80,7 +83,7 @@ function validatePublicId (id) {
   let errSignedPk = validateSignedPreKey(id.signedPreKey)
   if (errSignedPk)
     return errSignedPk
-  let errPks = firstNonNull(id.unsignedPreKeys.map(validateUnsignedPreKey))
+  let errPks = validateUnsigned(id.unsignedPreKeys)
   if (errPks)
     return errPks
   // check each type is correct
@@ -97,4 +100,5 @@ function validatePublicId (id) {
 module.exports = {
   publicId: validatePublicId,
   signedPreKey: validateSignedPreKey,
+  unsignedPreKeys: validateUnsigned,
 }

@@ -184,7 +184,6 @@ test('UPLOAD ADDITONAL one-time prekeys', t => {
 //   })
 // })
 
-
 test('SETUP and TAREDOWN and PERSIST', t => {
   let path = '/tmp/kserver'
   let ks = keyserver(dbAt(path))

@@ -54,36 +54,35 @@ function freshIdentity (keyId, store, cb, opts={ nUnsignedPreKeys: 10 }) {
     signedPreKey: null,
   }
 
+  let preKeysP =  unsignedPreKeysPromise(keyId, opts.nUnsignedPreKeys)
+      .then(function (preKeys) {
+        identity.unsignedPreKeys = preKeys
+        // save the last one in the store
+        let preKey = last(preKeys)
+        store.storePreKey(preKey.keyId, preKey.keyPair);
+      })
+  let identityKeyP = KeyHelper.generateIdentityKeyPair()
+      .then(function (idKp) {
+        identity.identityKeyPair = idKp
+        store.put('identityKey', idKp)
+        return KeyHelper.generateSignedPreKey(idKp, keyId)
+      }).then(function (signedPreKey) {
+        identity.signedPreKey = signedPreKey
+        store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
+      })
 
-  // HERE WE GENERATE.....
-  // 1. AN IDENTITY KEYPAIR
-  KeyHelper.generateIdentityKeyPair()
-    .then(function(idKp) {
-      identity.identityKeyPair = idKp
-      store.put('identityKey', idKp);
-    }).then(function () {
-      // 2. 20 UNSIGNED PREKEYS
-      return unsignedPreKeysPromise(keyId, opts.nUnsignedPreKeys)
-    }).then(function(preKeys) {
-      identity.unsignedPreKeys = preKeys
-      // save the last one in the store
-      let preKey = last(preKeys)
-      store.storePreKey(preKey.keyId, preKey.keyPair);
-    }).then(function () {
-      // 3. A SIGNED PREKEY
-      return KeyHelper.generateSignedPreKey(identity.identityKeyPair, keyId)
-    }).then(function(signedPreKey) {
-      identity.signedPreKey = signedPreKey
-      store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
-      // DONE CALLBACK
-    }).then(function() {
-      let r = {
-        complete: identity,
-        sanitized: sanitize(identity),
-        store: store,
-      }
-      cb(null, r)
-    }).catch(cb)
+  Promise.all([
+    preKeysP,
+    identityKeyP,
+  ]).then(function (_) {
+    let r = {
+      complete: identity,
+      sanitized: sanitize(identity),
+      store: store,
+    }
+    cb(null, r)
+
+  }).catch(cb)
 }
 
 function newSignedPreKey (identity, keyId, store, cb) {
