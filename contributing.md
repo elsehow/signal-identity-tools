@@ -7,7 +7,8 @@ Shouldn't they be separate?
 
 Well, the keyserver is so tightly complected with the ID generation
 (after all, the keyserver needs to validate whatever the ID generator produces).
-So, i am bundling them for now. Happy to hearjk
+So, I am bundling them for now. 
+You can require tehm separately in your applications.
 
 ## developing
 
@@ -20,4 +21,8 @@ now you can edit js files in src/ and test/ - tests will automatically re-run
 
 ## todo
 
-development priorities here
+- [ ] Make a level-using Signal store
+  - [ ] Test it in keyserver
+- [ ] Design an api for `client(level)`
+  - [ ] Guessing it will be level methods + idtools methods
+  - [ ] Potentially also methods for session ciphers

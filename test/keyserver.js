@@ -1,5 +1,6 @@
 let test = require('tape')
-let SignalStore = require('signal-protocol/test/InMemorySignalProtocolStore')
+// let SignalStore = require('signal-protocol/test/InMemorySignalProtocolStore')
+let SignalStore = require('../src/client.js')
 var signal = require('signal-protocol')
 var keyserver = require('../keyserver')
 var idtools = require('../idtools')
@@ -11,7 +12,7 @@ var BOB_ADDRESS   = new signal.SignalProtocolAddress("+14152222222", 1);
 let dbPath = '/tmp/kserver'
 
 function genTestId (cb) {
-  idtools.freshIdentity(1, new SignalStore(), cb)
+  idtools.freshIdentity(1, new SignalStore(h.dbAt()), cb)
 }
 
 function testConvo (aliceBundle, aliceIdentity, bobIdentity, t) {

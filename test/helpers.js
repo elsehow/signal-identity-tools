@@ -1,4 +1,3 @@
-// TODO bundle this somewhere shraed
 var msgpack = require('msgpack-lite')
 let valueEncoding = {encode: msgpack.encode,
                      decode: msgpack.decode,
