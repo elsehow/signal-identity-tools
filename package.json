@@ -1,7 +1,7 @@
 {
   "author": "elsehow",
   "name": "signal-identity-tools",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": " identity generation and management tools for the Signal protocol",
   "license": "BSD-3-Clause",
   "main": "src/index.js",
