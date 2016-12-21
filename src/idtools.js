@@ -18,16 +18,6 @@ function unsignedPreKeysPromise (keyId, n) {
   return Promise.all(ps)
 }
 
-function sanitize (identity) {
-  return {
-    registrationId: identity.registrationId,
-    identityKey: identity.identityKeyPair.pubKey,
-    signedPreKey: cleanSigned(identity.signedPreKey),
-    unsignedPreKeys: identity.unsignedPreKeys.map(cleanUnsigned),
-    // preKey: cleanUnsigned(identity.preKey)
-  }
-}
-
 function cleanUnsigned (preKey) {
   return {
     keyId: preKey.keyId,
@@ -43,7 +33,17 @@ function cleanSigned (preKey) {
   }
 }
 
-function freshIdentity (keyId, store, cb) {
+function sanitize (identity) {
+  return {
+    registrationId: identity.registrationId,
+    identityKey: identity.identityKeyPair.pubKey,
+    signedPreKey: cleanSigned(identity.signedPreKey),
+    unsignedPreKeys: identity.unsignedPreKeys.map(cleanUnsigned),
+    // preKey: cleanUnsigned(identity.preKey)
+  }
+}
+
+function freshIdentity (keyId, store, cb, opts={ nUnsignedPreKeys: 10 }) {
 
   let registrationId = KeyHelper.generateRegistrationId()
   store.put('registrationId', registrationId);
@@ -63,7 +63,7 @@ function freshIdentity (keyId, store, cb) {
       store.put('identityKey', idKp);
     }).then(function () {
       // 2. 20 UNSIGNED PREKEYS
-      return unsignedPreKeysPromise(keyId, 20)
+      return unsignedPreKeysPromise(keyId, opts.nUnsignedPreKeys)
     }).then(function(preKeys) {
       identity.unsignedPreKeys = preKeys
       // save the last one in the store
@@ -98,7 +98,21 @@ function newSignedPreKey (identity, keyId, store, cb) {
     }).catch(cb)
 }
 
+function newUnsignedPreKeys (n, keyId, cb) {
+  unsignedPreKeysPromise(keyId, n)
+    .then(pks => {
+      return pks
+    })
+    .then(pks => cb(null, {
+      complete: pks,
+      sanitized: pks.map(cleanUnsigned),
+    }))
+    .catch(cb)
+  return
+}
+
 module.exports = {
   freshIdentity: freshIdentity,
   newSignedPreKey: newSignedPreKey,
+  newUnsignedPreKeys: newUnsignedPreKeys,
 }
