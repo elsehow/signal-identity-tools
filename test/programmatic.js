@@ -1,7 +1,8 @@
 let test = require('tape')
-let idtools = require('..')
 let SignalStore = require('signal-protocol/test/InMemorySignalProtocolStore')
 var signal = require('signal-protocol')
+var keyserver = require('../keyserver')
+var idtools = require('../idtools')
 
 var ALICE_ADDRESS = new signal.SignalProtocolAddress("+14151111111", 1);
 var BOB_ADDRESS   = new signal.SignalProtocolAddress("+14152222222", 1);
@@ -11,9 +12,9 @@ function genTestId (cb) {
 }
 
 test('sanity', t => {
-  t.ok(idtools.keyserver)
-  t.deepEquals(typeof(idtools.keyserver), 'function')
-  let ks = idtools.keyserver()
+  t.ok(keyserver)
+  t.deepEquals(typeof(keyserver), 'function')
+  let ks = keyserver()
   t.deepEquals(typeof(ks.register),
                'function')
   t.deepEquals(typeof(ks.fetchPreKeyBundle),
@@ -22,7 +23,7 @@ test('sanity', t => {
 })
 
 test('REGISTER a prekey', t => {
-  let ks = idtools.keyserver()
+  let ks = keyserver()
   genTestId(function (err, identity) {
     // use the sanitized identity for public keyserver
     let pubid = identity.sanitized
@@ -34,7 +35,7 @@ test('REGISTER a prekey', t => {
 })
 
 test('bad prekey REJECT', t => {
-  let ks = idtools.keyserver()
+  let ks = keyserver()
   genTestId(function (err, identity) {
     // NO NO don't push your compelte identity
     let BADpubid = identity.complete
@@ -46,7 +47,7 @@ test('bad prekey REJECT', t => {
 })
 
 test('fetch that PREKEY BUNDLE and CHAT', t => {
-  let ks = idtools.keyserver()
+  let ks = keyserver()
   // alice generates an ID
   genTestId(function (err, aliceIdentity) {
     let aliceSanitized = aliceIdentity.sanitized
@@ -63,40 +64,74 @@ test('fetch that PREKEY BUNDLE and CHAT', t => {
           // console.log('alice bundle', aliceBundle)
           builder.processPreKey(aliceBundle)
             .then(function () {
-              // console.log('alice identity', aliceIdentity.store)
-              // console.log('bob identity', bobIdentity.store)
-
+              t.ok(aliceIdentity.store)
+              t.ok(bobIdentity.store)
               var aliceSessionCipher = new signal.SessionCipher(aliceIdentity.store, BOB_ADDRESS);
               var bobSessionCipher = new signal.SessionCipher(bobIdentity.store, ALICE_ADDRESS);
-
-              bobSessionCipher
+              return bobSessionCipher
                 .encrypt(new Buffer('hello'))
+                .then(ct => {
+                  t.equal(ct.type, 3,
+                          'ciphertext.type should be 3, preKeyWhisperMessage')
+                  t.ok(ct.body)
+                  return ct
+                })
                 .then(ct =>
                       aliceSessionCipher.decryptPreKeyWhisperMessage(ct.body, 'binary'))
                 .then(() => aliceSessionCipher.encrypt('hello sweet world'))
+                .then(ct => {
+                  t.equal(ct.type, 1,
+                          'ciphertext.type should be 1, whisperMessage')
+                  t.ok(ct.body)
+                  return ct
+                })
                 .then(ct =>
                       bobSessionCipher.decryptWhisperMessage(ct.body, 'binary'))
                 .then(pt => {
                   ptStr = new Buffer(pt).toString()
                   t.deepEqual(ptStr, 'hello sweet world',
-                             'round trip encrypt works')
+                              'round trip encrypt works')
                   t.end()
                 }).catch(t.notOk)
-            })
-        }).catch(t.notOk)
+            }).catch(t.notOkj)
+        })
       })
     })
   })
 })
 
+test('REPLACE signed prekey', t => {
+  let ks = keyserver()
+  // alice generates an ID
+  genTestId(function (err, aliceIdentity) {
+    let aliceSanitized = aliceIdentity.sanitized
+    // alice registers
+    ks.register(ALICE_ADDRESS.getName(), aliceSanitized, function (err, id) {
+      idtools.newSignedPreKey(aliceIdentity, 1, aliceIdentity.store, function (err, signedPreKey) {
+        t.notOk(err)
+        t.ok(signedPreKey)
+        // replace on server
+        ks.replaceSignedPreKey(ALICE_ADDRESS.getName(), signedPreKey.sanitized, function (err, res) {
+          t.notOk(err)
+          t.ok(res)
+          t.end()
+        })
+      })
+    })
+  })
+})
+// test('support multiple UNSIGNED PREKEYS', t => {
+//   t.ok(null)
+//   t.end()
+// })
 // test('SETUP and TAREDOWN and PERSIST', t => {
-//   let ks = idtools.keyserver('/tmp/kserver')
+//   let ks = keyserver('/tmp/kserver')
 //   genTestId(function (err, identity) {
 //     let pubid = identity.sanitized
 //     ks.register(pubid, function (err) {
 //       ks.close(function () {
 //         console.log('reached')
-//         ks = idtools.keyserver('/tmp/kserver')
+//         ks = keyserver('/tmp/kserver')
 //         ks.fetchPreKeyBundle(pubid.registrationId, function (err, bundle) {
 //           t.notOk(err)
            // TODO get signal to accept the pubkey bundle

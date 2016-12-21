@@ -19,29 +19,27 @@ function unsignedPreKeysPromise (keyId, n) {
 }
 
 function sanitize (identity) {
-
-  function cleanUnsigned (preKey) {
-    return {
-      keyId: preKey.keyId,
-      publicKey: preKey.keyPair.pubKey,
-    }
-  }
-
-  function cleanSigned (preKey) {
-    return {
-      keyId: preKey.keyId,
-      publicKey: preKey.keyPair.pubKey,
-      signature: preKey.signature
-    }
-  }
-
-
   return {
     registrationId: identity.registrationId,
     identityKey: identity.identityKeyPair.pubKey,
     signedPreKey: cleanSigned(identity.signedPreKey),
-    // unsignedPreKeys: identity.unsignedPreKeys.map(cleanUnsigned),
-    preKey: cleanUnsigned(identity.preKey)
+    unsignedPreKeys: identity.unsignedPreKeys.map(cleanUnsigned),
+    // preKey: cleanUnsigned(identity.preKey)
+  }
+}
+
+function cleanUnsigned (preKey) {
+  return {
+    keyId: preKey.keyId,
+    publicKey: preKey.keyPair.pubKey,
+  }
+}
+
+function cleanSigned (preKey) {
+  return {
+    keyId: preKey.keyId,
+    publicKey: preKey.keyPair.pubKey,
+    signature: preKey.signature
   }
 }
 
@@ -52,8 +50,7 @@ function freshIdentity (keyId, store, cb) {
   let identity = {
     registrationId: registrationId,
     identityKeyPair: null,
-    // unsignedPreKeys: [],
-    preKey: null,
+    unsignedPreKeys: [],
     signedPreKey: null,
   }
 
@@ -65,13 +62,12 @@ function freshIdentity (keyId, store, cb) {
       identity.identityKeyPair = idKp
       store.put('identityKey', idKp);
     }).then(function () {
-      // 2. 10 UNSIGNED PREKEYS
-      return unsignedPreKeysPromise(keyId, 1)
+      // 2. 20 UNSIGNED PREKEYS
+      return unsignedPreKeysPromise(keyId, 20)
     }).then(function(preKeys) {
-      let preKey = preKeys[0]
-      identity.unsignedPreKeys = preKey
-      identity.preKey  = preKeys[0]
+      identity.unsignedPreKeys = preKeys
       // save the last one in the store
+      let preKey = last(preKeys)
       store.storePreKey(preKey.keyId, preKey.keyPair);
     }).then(function () {
       // 3. A SIGNED PREKEY
@@ -88,7 +84,21 @@ function freshIdentity (keyId, store, cb) {
       }
       cb(null, r)
     }).catch(cb)
-  
 }
 
-module.exports = freshIdentity
+function newSignedPreKey (identity, keyId, store, cb) {
+  KeyHelper.generateSignedPreKey(identity.complete.identityKeyPair, keyId)
+    .then(function (signedPreKey) {
+      store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
+      let r = {
+        complete: signedPreKey,
+        sanitized: cleanSigned(signedPreKey),
+      }
+      cb(null, signedPreKey)
+    }).catch(cb)
+}
+
+module.exports = {
+  freshIdentity: freshIdentity,
+  newSignedPreKey: newSignedPreKey,
+}
