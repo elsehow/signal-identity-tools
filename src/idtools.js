@@ -92,6 +92,7 @@ function newSignedPreKey (identity, keyId, store, cb) {
       let r = {
         complete: signedPreKey,
         sanitized: cleanSigned(signedPreKey),
+        store: store,
       }
       cb(null, r)
     }).catch(cb)

@@ -17,11 +17,11 @@ a keyserver and id generation tools for the [signal-protocol](https://github.com
 
 ## api
 
-### let idtools = require('signal-identity-tools')
+### let idtools = require('signal-identity-tools/idtools')
 
-### idtools.freshIdentity(key, store, cb)
+#### idtools.freshIdentity(keyId, store, cb)
 
-`key` is a number.
+`keyId` is a number.
 
 `store` is a signal-protocol store (see [signal-protocol](https://github.com/elsehow/signal-protocol)).
 
@@ -29,19 +29,64 @@ Returns an object `{ complete, sanitized, store }`. `complete` is the full ident
 
 The `store` this method returns is the same `store` you pass in. I return it so you will notice that I am mutating it.
 
-### let keyserver = idtools.keyserver()
+#### idtools.newSignedPreKey(identity, keyId, store, cb)
 
-#### keyserver.register(publicID, cb)
+Like `freshIdentity`, calls back on `(err, { complete, sanitized, store } )`
 
-Where `publicID` comes from `idtools.freshIdentity().sanitized`
+`sanitized` is the public-facing version, ready to send to the keyserver.
+
+#### idtools.newUnsignedPreKeys(n, keyId, cb)
+
+Creates `n` unsigned (one-time) PreKeys. Calls back on `(err, { complete, sanitized } )`, where both `complete` and `sanitized` are lists of keys.
+
+`sanitized` is the public-facing version, ready to send to the keyserver.
+
+### let keyserver = require('signal-identity-tools/keyserver')
+
+#### ks = keyserver(level)
+
+`level` is a leveldb-like instance.
+
+You will want to configure your level db's encoding a bit, to allow for typed arrays:
+
+```js
+// utilities for setting up level instances
+var msgpack = require('msgpack-lite')
+let valueEncoding = {encode: msgpack.encode,
+                     decode: msgpack.decode,
+                     buffer: true}
+let level = require('level')
+let opts = {valueEncoding: valueEncoding}
+let db = level('/tmp/myKeyserverDb', opts)
+```
+
+#### ks.register(name, publicID, cb)
+
+Registers a new username `name`, where `publicID` comes from the callback value of `idtools.freshIdentity`'s `.sanitized`
 
 `cb(err)`
 
-#### keyserver.preKeyBundle(id, cb)
+#### ks.preKeyBundle(name, cb)
 
-Returns a PreKeyBundle for a user with `id`, per [signal-protocol](https://github.com/elsehow/signal-protocol)'s spec.
+Calls back on the keyserver's next PreKeyBundle for a user `name`, per [signal-protocol](https://github.com/elsehow/signal-protocol)'s spec for these bundles.
 
-`cb(err, res)`
+`b(err, bundle)`
+
+#### ks.replaceSignedPreKey(name, signedPreKey, cb)
+
+In the signal protocol, [users should replace their signed PreKeys occasionally](https://whispersystems.org/docs/specifications/x3dh/). 
+
+This registers a new Signed PreKey for name, `name`, where `signedPreKey` comes from the callback value of `idtools.newSignedPreKey`'s `.sanitized`.
+
+`cb(err)`
+
+#### ks.uploadUnsignedPreKeys(name, unisgnedPreKeys, cb)
+
+In the signal protocol, [users must upload unsigned PreKeys regularly](https://whispersystems.org/docs/specifications/x3dh/). 
+
+This uploads new, unsigned (one-time) PreKeys for name `name`, where `unsignedPreKeys` come from the callback value of `idtools.newUnsignedPreKeys`'s `.sanitized`.
+
+`cb(err)`
 
 ## license
 
