@@ -97,7 +97,7 @@ test('REPLACE signed prekey', t => {
     let aliceSanitized = aliceIdentity.sanitized
     // alice registers
     ks.register(n, aliceSanitized, function (err, id) {
-      alice.newSignedPreKey(aliceIdentity, 1, function (err, signedPreKey) {
+      alice.newSignedPreKey(1, function (err, signedPreKey) {
         t.notOk(err)
         t.ok(signedPreKey)
         // replace on server
