@@ -38,12 +38,17 @@ now you can edit js files in src/ and test/ - tests will automatically re-run
   
   
 - [ ] Document the keyserver / client 
-  - [ ] One for key management (of secret keys), the other servering (public) identities for many clients
+  - [x] One for key management (of secret keys), the other servering (public) identities for many clients
   - [ ] Warning about how we don't do rate limiting
   - [ ] Document opts n unsigned client, n unsinged low thresh on keyserver
+
 - [ ] Important
   - [ ] Unsigned prekey uploads are not verified. 
+    - [ ] When you upload a one-time prekey, you keep the private part of the key. 
+      - [ ] So, people cannot upload them for you.
+    - [ ] How do we verify that a given prekey is legit? They are not signed
     - [ ] One way to solve this might be to upload signed prekeys, and have keyserver discard the signatures.
+      - [ ] But, then Eve could steal a signature for a prekey, which she could upload as her own Signed prekey
   - [ ] Bob should keep around his old signed prekeys for a while after he uploads a new one
   - [ ] Rate limit people who might be trying to exhaust someone's prekeys!
   - [ ] Make sure to notify people when their prekeys are getting low ('low-prekeys', username, num_remain)

@@ -2,6 +2,10 @@ let signal = require('signal-protocol')
 let KeyHelper = signal.KeyHelper;
 let last = arr => arr[arr.length-1]
 
+function uuid () {
+  return signal.KeyHelper.generateRegistrationId()
+}
+
 /*
   elsehow 12/21/16
   berkeley
@@ -25,10 +29,10 @@ module.exports = {
   newUnsignedPreKeys: newUnsignedPreKeys,
 }
 
-function unsignedPreKeysPromise (keyId, n) {
+function unsignedPreKeysPromise (n) {
   let ps = []
   for (let i=0;i<n;i++)
-    ps.push(KeyHelper.generatePreKey(keyId))
+    ps.push(KeyHelper.generatePreKey(uuid()))
   return Promise.all(ps)
 }
 
@@ -67,12 +71,13 @@ function freshIdentity (store, keyId, cb, opts={ nUnsignedPreKeys: 10 }) {
     signedPreKey: null,
   }
 
-  let preKeysP =  unsignedPreKeysPromise(keyId, opts.nUnsignedPreKeys)
+  let preKeysP =  unsignedPreKeysPromise(opts.nUnsignedPreKeys)
       .then((preKeys) => {
         identity.unsignedPreKeys = preKeys
         // save the last one in the store
-        let preKey = last(preKeys)
-        return store.storePreKey(preKey.keyId, preKey.keyPair);
+        preKeys.forEach(function (preKey) {
+          return store.storePreKey(preKey.keyId, preKey.keyPair);
+        })
       })
   let identityKeyP = KeyHelper.generateIdentityKeyPair()
       .then((idKp) => {
@@ -116,8 +121,8 @@ function newSignedPreKey (store, keyId, cb) {
     }).catch(cb)
 }
 
-function newUnsignedPreKeys (n, keyId, cb) {
-  unsignedPreKeysPromise(keyId, n)
+function newUnsignedPreKeys (n, cb) {
+  unsignedPreKeysPromise(n)
     .then(pks => {
       return pks
     })

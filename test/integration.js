@@ -96,7 +96,9 @@ test('fetch that PREKEY BUNDLE and CHAT', t => {
       bob.freshIdentity(1, function (err, bobIdentity) {
         // and fetches alice's bundle
         ks.fetchPreKeyBundle(name, function (err, aliceBundle) {
-          testConvo(aliceBundle, alice, bob, t).catch(t.notOk)
+          testConvo(aliceBundle, 'alice', 'bob', alice, bob, t).catch(t.notOk)
+            .catch(t.notOk)
+            .then(t.end)
         })
       })
     })
@@ -166,12 +168,12 @@ test('UPLOAD ADDITONAL one-time prekeys', t => {
     let aliceSanitized = aliceIdentity.sanitized
     // alice registers
     ks.register(n, aliceSanitized, function (err, id) {
-      alice.newUnsignedPreKeys(10, 1, function (err, prekeys) {
+      alice.newUnsignedPreKeys(10, function (err, prekeys) {
         t.notOk(err)
         t.equal(prekeys.complete.length, 10,
-                'prekes.complete is the right length')
+                'prekeys.complete is the right length')
         t.equal(prekeys.sanitized.length, 10,
-                'prekes.sanitized is the right length')
+                'prekeys.sanitized is the right length')
         // replace on server
         ks.fetchPreKeyBundle(n, function (err, bundle) {
           t.notOk(err)
@@ -212,7 +214,9 @@ test.skip('We can chat with NO ONE-TIME PREKEYS?', t => {
             ks.fetchPreKeyBundle('alice', function (err, bundle) {
               console.log(bundle)
               t.notOk(bundle.preKey, 'no prekeys here')
-              testConvo(bundle, alice, bob, t)
+              testConvo(bundle, 'alice', 'bob', alice, bob, t)
+                .catch(t.notOk)
+                .then(t.end)
             })
           })
         })
@@ -277,8 +281,9 @@ test.skip('IMPT - Eve can disrupt Bob and Alice\'s communication by uploading un
               bob.freshIdentity(1, function (err, bobIdentity) {
                 // and fetches alice's bundle
                 ks.fetchPreKeyBundle('alice', function (err, aliceBundle) {
-                  testConvo(aliceBundle, alice, bob,t).catch(t.ok)
-                  t.end()
+                  testConvo(aliceBundle, 'alice', 'bob', alice, bob,t)
+                    .catch(t.ok)
+                    .then(t.end)
                 })
              })
             })
@@ -292,16 +297,42 @@ test.skip('IMPT - Eve can disrupt Bob and Alice\'s communication by uploading un
 })
 
 
+test('support MULTIPLE CONVERSATIONS', t => {
+  let ks = keyserver(newDb())
+  let alice = client(newDb())
+  let name = 'alice'
+  alice.freshIdentity(1, function (err, aliceIdentity) {
+    let aliceSanitized = aliceIdentity.sanitized
+    // alice registers
+    ks.register(name, aliceSanitized, function (err, id) {
+      // bob generates an ID
+      let bob = client(newDb())
+      bob.freshIdentity(1, function (err, bobIdentity) {
+        // and fetches alice's bundle
+        ks.fetchPreKeyBundle(name, function (err, aliceBundle) {
+          testConvo(aliceBundle, 'alice', 'bob', alice, bob, t).catch(t.notOk)
+          let calvin = client(newDb())
+          calvin.freshIdentity(1, function (err, calvinIdentity) {
+            ks.fetchPreKeyBundle(name, function (err, aliceBundle2) {
+              testConvo(aliceBundle2, 'alice', 'calvin', alice, calvin, t)
+                .catch(t.notOk)
+                .then(t.end)
+            })
+          })
+        })
+      })
+    })
+  })
+})
 
-function testConvo (aliceBundle, aliceIdentity, bobIdentity, t) {
+
+function testConvo (aliceBundle, aliceName, bobName, aliceIdentity, bobIdentity, t) {
   // get signal to accept the pubkey bundle
-  let builder = bobIdentity.sessionBuilder('alice', 1)
+  let builder = bobIdentity.sessionBuilder(aliceName, 1)
   return builder.processPreKey(aliceBundle)
     .then(() => {
-      t.ok(aliceIdentity)
-      t.ok(bobIdentity)
-      let aliceSessionCipher = aliceIdentity.sessionCipher('bob', 1)
-      let bobSessionCipher = bobIdentity.sessionCipher('alice', 1)
+      let aliceSessionCipher = aliceIdentity.sessionCipher(bobName, 1)
+      let bobSessionCipher = bobIdentity.sessionCipher(aliceName, 1)
       return bobSessionCipher
         .encrypt(new Buffer('hello'))
         .then(ct => {
@@ -325,7 +356,6 @@ function testConvo (aliceBundle, aliceIdentity, bobIdentity, t) {
           ptStr = new Buffer(pt).toString()
           t.deepEqual(ptStr, 'hello sweet world',
                       'round trip encrypt works')
-          t.end()
         }).catch(t.notOk)
     }).catch(t.notOk)
 }

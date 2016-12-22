@@ -51,7 +51,7 @@ function SignalProtocolStore (level) {
         .then(trusted => {
           if (!trusted)
             return Promise.resolve(true)
-          return new Promise.resolve(util.toString(identityKey) === util.toString(trusted))
+          return Promise.resolve(util.toString(identityKey) === util.toString(trusted))
         })
 	  },
 	  loadIdentityKey: function(identifier) {
