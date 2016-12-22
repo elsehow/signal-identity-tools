@@ -30,9 +30,9 @@ now you can edit js files in src/ and test/ - tests will automatically re-run
   - [-] We handle the details of on the transport layer
 
 - [ ] Verifying keys?
-  - [ ] New identities?
+  - [x] New identities?
   - [ ] New signed prekeys?
-  - [ ] New unsigned prekeys?
+  - [ ] New unsigned prekeys? (Can we do this? Do we need to?)
   
   
 - [ ] Document the keyserver / client 

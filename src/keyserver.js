@@ -32,11 +32,7 @@ module.exports = function (level, opts={ lowPreKeyThreshold: 10 }) {
         return cb(err)
       if (!bundle)
         return('Name not found.')
-      let valErr = validator(item)
-      if (valErr)
-        return cb(valErr)
-      bundle = op(bundle)
-      level.put(name, bundle, cb)
+      op(bundle)
       return
     })
   }
@@ -54,28 +50,32 @@ module.exports = function (level, opts={ lowPreKeyThreshold: 10 }) {
       let numRemaining = bundle.unsignedPreKeys.length
       if (numRemaining <= opts.lowPreKeyThreshold)
         emitter.emit('low-prekeys', name, numRemaining)
-      return bundle
-    }, x => null, null, function (err) {
-      if (err)
-        cb(err)
-      // finally, call back on the presentable bundle we made
-      return cb(null, b)
+      cb(null, bundle)
     })
   }
 
   function replaceSignedPreKey (name, signedPreKey, cb) {
+    // TODO this validator should check the signedPreKey against the bundle.identityKey
+    //      what's an easy, interoperable way to make this work?
+    //      use bundle form the callback perhaps?
     return update(name, function (bundle) {
+      let valErr = validate.signedPreKey(signedPreKey)
+      if (valErr)
+        return cb(valErr)
       bundle.signedPreKey = signedPreKey
-      return bundle
-    }, validate.signedPreKey, signedPreKey, cb)
+      level.put(name, bundle, cb)
+    })
   }
 
   // TODO validate
   function uploadUnsignedPreKeys (name, prekeys, cb) {
+    let valErr = validate.unsignedPreKeys(prekeys)
+    if (valErr)
+      return cb(valErr)
     return update(name, function (bundle) {
       bundle.unsignedPreKeys.push(prekeys)
-      return bundle
-    }, validate.unsignedPreKeys, prekeys, cb)
+      cb()
+    }, cb)
   }
 
 
