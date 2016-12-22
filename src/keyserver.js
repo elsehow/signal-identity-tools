@@ -10,8 +10,6 @@ module.exports = function (level, opts={ lowPreKeyThreshold: 10 }) {
   let emitter = new EventEmitter()
 
   function register (name, publicIdentity, cb) {
-    // TODO we could verify public identity with signatures ?
-    //      https://github.com/elsehow/signal-protocol/blob/master/src/SessionBuilder.js#L23
     return level.get(name, function (err, value) {
       if (err && err.type !== 'NotFoundError')
         return cb(err)
@@ -59,11 +57,13 @@ module.exports = function (level, opts={ lowPreKeyThreshold: 10 }) {
     //      what's an easy, interoperable way to make this work?
     //      use bundle form the callback perhaps?
     return update(name, function (bundle) {
-      let valErr = validate.signedPreKey(signedPreKey)
-      if (valErr)
-        return cb(valErr)
-      bundle.signedPreKey = signedPreKey
-      level.put(name, bundle, cb)
+      let idPubKey = bundle.identityKey
+      validate.signedPreKey(idPubKey, signedPreKey, function (valErr) {
+        if (valErr)
+          return cb(valErr)
+        bundle.signedPreKey = signedPreKey
+        level.put(name, bundle, cb)
+      })
     })
   }
 

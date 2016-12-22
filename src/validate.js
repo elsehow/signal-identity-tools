@@ -34,6 +34,19 @@ let crypto = require('signal-protocol/src/crypto.js').crypto
   }
 
 */
+function verify (identityKey, signedPreKey, cb) {
+  crypto.Ed25519Verify(
+    identityKey,
+    signedPreKey.publicKey,
+    signedPreKey.signature
+  ).catch(err => {
+    cb('Validation error ' + err)
+    return -1
+  }).then((res) => {
+    if (res!=-1)
+      cb()
+  })
+}
 function firstNonNull (arr) {
   for (let i=0;i<arr.length;i++) {
     if (arr[i]!=null)
@@ -70,7 +83,7 @@ function validateUnsignedPreKey (p) {
 function validateUnsigned (prekeys) {
   return firstNonNull(prekeys.map(validateUnsignedPreKey))
 }
-function validateSignedPreKey (p) {
+function validateSignedPreKey (idPub, p, cb) {
   let props = ['keyId', 'publicKey', 'signature']
   var schema = [
     [hasOnlyProps(p, props), 'Unsigned prekey should have props ' + props.join(',')],
@@ -78,39 +91,39 @@ function validateSignedPreKey (p) {
     [isArrayBuffer(p.publicKey), 'signedPreKey.publicKey should be an ArrayBuffer'],
     [isArrayBuffer(p.signature), 'signedPreKey.signature should be an ArrayBuffer'],
   ]
-  return check(schema)
+  let err = check(schema)
+  if (err)
+    return cb(err)
+  // if all else passes,
+  // do signature verif.
+  verify(idPub,
+         p,
+         cb)
 }
 // calls back on error (string) or null
 function validatePublicId (id, cb) {
   let props = ['registrationId', 'identityKey', 'signedPreKey', 'unsignedPreKeys']
-  let errSignedPk = validateSignedPreKey(id.signedPreKey)
-  if (errSignedPk)
-    return cb(errSignedPk)
-  let errPks = validateUnsigned(id.unsignedPreKeys)
-  if (errPks)
-    return cb(errPks)
-  // check each type is correct
-  // [  [check, errorMsg], ... ]
-  let schema = [
-    [hasOnlyProps(id, props), 'Properties for public id should be ' + props.join(',')],
-    [isNumber(id.registrationId), 'public ID should be a number'],
-    [isArrayBuffer(id.identityKey), 'identityKey should be an ArrayBuffer'],
-  ]
-  let valErr = check(schema)
-  if (valErr)
-    return cb(valErr)
-  // if nothing else is wrong,
-  // we verify the keys with some crypto
-  crypto.Ed25519Verify(
-    id.identityKey,
-    id.signedPreKey.publicKey,
-    id.signedPreKey.signature
-  ).catch(err => {
-    cb('Validation error ' + err)
-    return -1
-  }).then((res) => {
-    if (res!=-1)
-      cb()
+  validateSignedPreKey(id.identityKey, id.signedPreKey, function (errSignedPk) {
+    if (errSignedPk)
+      return cb(errSignedPk)
+    let errPks = validateUnsigned(id.unsignedPreKeys)
+    if (errPks)
+      return cb(errPks)
+    // check each type is correct
+    // [  [check, errorMsg], ... ]
+    let schema = [
+      [hasOnlyProps(id, props), 'Properties for public id should be ' + props.join(',')],
+      [isNumber(id.registrationId), 'public ID should be a number'],
+      [isArrayBuffer(id.identityKey), 'identityKey should be an ArrayBuffer'],
+    ]
+    let valErr = check(schema)
+    if (valErr)
+      return cb(valErr)
+    // if nothing else is wrong,
+    // we verify the keys with some crypto
+    verify(id.identityKey,
+           id.signedPreKey,
+           cb)
   })
 }
 
