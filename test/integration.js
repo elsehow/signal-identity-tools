@@ -212,7 +212,6 @@ test.skip('We can chat with NO ONE-TIME PREKEYS?', t => {
           ks.fetchPreKeyBundle('alice', function (_, _) {
             // now, this one should have no PreKey
             ks.fetchPreKeyBundle('alice', function (err, bundle) {
-              console.log(bundle)
               t.notOk(bundle.preKey, 'no prekeys here')
               testConvo(bundle, 'alice', 'bob', alice, bob, t)
                 .catch(t.notOk)
@@ -252,14 +251,6 @@ test('SETUP and TAREDOWN and PERSIST', t => {
   })
 })
 
-test.onFinish(() => {
-  console.log('finishing...')
-  let lvl = level(dbPath)
-  lvl.del('alice', function () {
-    console.log('finished')
-  })
-})
-
 // TODO
 test.skip('IMPT - Eve can disrupt Bob and Alice\'s communication by uploading unsigned prekeys for Alice.', t => {
   let ks = keyserver(newDb())
@@ -274,15 +265,15 @@ test.skip('IMPT - Eve can disrupt Bob and Alice\'s communication by uploading un
         ks.fetchPreKeyBundle('alice', function (err, bundle) {
           t.notOk(bundle.preKey)
           // now eve will publish some prekeys on alice's behalf...
-          eve.newUnsignedPreKeys(10, 1, function (err, prekeys) {
+          eve.newUnsignedPreKeys(10, function (err, prekeys) {
             ks.uploadUnsignedPreKeys('alice', prekeys.sanitized, function (err) {
               //now, can alice and bob start a conversation?
               let bob = client(newDb())
               bob.freshIdentity(1, function (err, bobIdentity) {
                 // and fetches alice's bundle
                 ks.fetchPreKeyBundle('alice', function (err, aliceBundle) {
-                  testConvo(aliceBundle, 'alice', 'bob', alice, bob,t)
-                    .catch(t.ok)
+                  testConvo(bundle, 'alice', 'bob', alice, bob, t)
+                    .catch(t.notOk)
                     .then(t.end)
                 })
              })
@@ -359,3 +350,12 @@ function testConvo (aliceBundle, aliceName, bobName, aliceIdentity, bobIdentity,
         }).catch(t.notOk)
     }).catch(t.notOk)
 }
+
+
+test.onFinish(() => {
+  console.log('finishing...')
+  let lvl = level(dbPath)
+  lvl.del('alice', function () {
+    console.log('finished')
+  })
+})
