@@ -8,6 +8,42 @@ let levelDb = () => level(dbPath, {valueEncoding: valEncoding})
 let newDb = () => memdb({valueEncoding: valEncoding})
 let dbPath = '/tmp/kserver'
 
+
+//TODO
+test('what happens if someone uploads unsigned prekeys for someone else?', t => {
+  let ks = keyserver(newDb())
+  let alice = client(newDb())
+  let eve = client(newDb())
+  // alice will upload 1 prekey, registering as 'alice'
+  alice.freshIdentity(1, function (err, identity) {
+    ks.register('alice', identity.sanitized, function (err) {
+      // now we will remove her one bundle
+      ks.fetchPreKeyBundle('alice', function (err, _) {
+        // she has no more unsigned pre-keys, right?
+        ks.fetchPreKeyBundle('alice', function (err, bundle) {
+          t.equal(bundle.unsignedPreKeys.length, 0)
+          // now eve will publish some prekeys on alice's behalf...
+          eve.newUnsignedPreKeys(10, 1, function (err, prekeys) {
+            ks.uploadUnsignedPreKeys('alice', prekeys.sanitized, function (err) {
+              //now, can alice and bob start a conversation?
+              let bob = client(newDb())
+              bob.freshIdentity(1, function (err, bobIdentity) {
+                // and fetches alice's bundle
+                ks.fetchPreKeyBundle('alice', function (err, aliceBundle) {
+                  testConvo(aliceBundle, alice, bob, t).catch(t.notOk)
+                  t.end()
+                })
+              })
+            })
+          })
+        })
+      })
+    })
+  }, {
+    nUnsignedPreKeys:1
+  })
+})
+
 test('sanity', t => {
   t.ok(keyserver)
   t.deepEquals(typeof(keyserver), 'function')
@@ -68,7 +104,6 @@ test('REJECT non-sanitized keys', t => {
   })
 })
 
-
 test('REJECT a good sanitized identity with a bad key', t => {
   let ks = keyserver(newDb())
   let c = client(newDb())
@@ -104,6 +139,7 @@ test('fetch that PREKEY BUNDLE and CHAT', t => {
 })
 
 test('REPLACE signed prekey', t => {
+  let newSprK;
   let ks = keyserver(newDb())
   let alice = client(newDb())
   let n = 'alice'
@@ -115,10 +151,15 @@ test('REPLACE signed prekey', t => {
       alice.newSignedPreKey(1, function (err, signedPreKey) {
         t.notOk(err)
         t.ok(signedPreKey)
+        newSprK = signedPreKey.sanitized
         // replace on server
         ks.replaceSignedPreKey(n, signedPreKey.sanitized, function (err) {
           t.notOk(err)
-          t.end()
+          ks.fetchPreKeyBundle(n, function (err, bundle) {
+            t.notOk(err)
+            t.deepEqual(bundle.signedPreKey, newSprK)
+            t.end()
+          })
         })
       })
     })
@@ -135,6 +176,7 @@ test('REJECT invalid prekey replacement', t => {
     // alice registers
     ks.register(n, aliceSanitized, function (err, id) {
       alice.newSignedPreKey(1, function (err, signedPreKey) {
+        spk = signedPreKey
         t.notOk(err)
         t.ok(signedPreKey)
         // phony signature
@@ -167,11 +209,18 @@ test('UPLOAD ADDITONAL one-time prekeys', t => {
                 'prekes.sanitized is the right length')
         // replace on server
         ks.uploadUnsignedPreKeys(n, prekeys.sanitized, function (err) {
-          t.notOk(err)
-          t.end()
+          // after starting with 2, uploading 10, and fetching 1,
+          // alice should have 11 unsigned prekeys
+          ks.fetchPreKeyBundle(n, function (err, bundle) {
+            t.notOk(err)
+            t.equal(bundle.unsignedPreKeys.length, 11)
+            t.end()
+          })
         })
       })
     })
+  }, {
+    nUnsignedPreKeys: 2,
   })
 })
 

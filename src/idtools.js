@@ -37,7 +37,7 @@ function cleanUnsigned (preKey) {
     keyId: preKey.keyId,
     publicKey: preKey.keyPair.pubKey,
   }
-den}
+}
 
 function cleanSigned (preKey) {
   return {

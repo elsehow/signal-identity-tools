@@ -53,9 +53,6 @@ module.exports = function (level, opts={ lowPreKeyThreshold: 10 }) {
   }
 
   function replaceSignedPreKey (name, signedPreKey, cb) {
-    // TODO this validator should check the signedPreKey against the bundle.identityKey
-    //      what's an easy, interoperable way to make this work?
-    //      use bundle form the callback perhaps?
     return update(name, function (bundle) {
       let idPubKey = bundle.identityKey
       validate.signedPreKey(idPubKey, signedPreKey, function (valErr) {
@@ -73,9 +70,9 @@ module.exports = function (level, opts={ lowPreKeyThreshold: 10 }) {
     if (valErr)
       return cb(valErr)
     return update(name, function (bundle) {
-      bundle.unsignedPreKeys.push(prekeys)
-      cb()
-    }, cb)
+      bundle.unsignedPreKeys = bundle.unsignedPreKeys.concat(prekeys)
+      level.put(name, bundle, cb)
+    })
   }
 
 
@@ -89,6 +86,7 @@ module.exports = function (level, opts={ lowPreKeyThreshold: 10 }) {
     replaceSignedPreKey: replaceSignedPreKey,
     uploadUnsignedPreKeys: uploadUnsignedPreKeys,
     close: close,
+    _db: level,
   }
 
   let self = extend(emitter, methods)

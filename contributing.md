@@ -31,8 +31,8 @@ now you can edit js files in src/ and test/ - tests will automatically re-run
 
 - [ ] Verifying keys?
   - [x] New identities?
-  - [ ] New signed prekeys?
-  - [ ] New unsigned prekeys? (Can we do this? Do we need to?)
+  - [x] New signed prekeys?
+  - [] New unsigned prekeys? (Can we do this? Do we need to?)
   
   
 - [ ] Document the keyserver / client 
