@@ -7,6 +7,7 @@ let ks = keyserver(newDb())
 
 // alice makes a client, and generates an identity
 let alice = client(newDb())
+
 alice.freshIdentity(1, function (err, id) {
   if (err) console.log('err!', err)
   let pubid = id.sanitized
@@ -15,6 +16,10 @@ alice.freshIdentity(1, function (err, id) {
   bob.freshIdentity(1, function (err, _) {
     // now alice registers with the keyserver
     ks.register('alice', id.sanitized, function (err) {
+      // alice should upload new unsigned prekeys when the keyserver asks her to
+      uploadNewPreKeysWhenAsked('alice', 1, alice, ks)
+      // she should also replace her signed PreKey occasionally
+      replaceSignedPreKeyOccasionally('alice', 1, alice, ks, 1000)
       // without registering (!) bob gets alice's pre-key bundle
       ks.fetchPreKeyBundle('alice', function (err, aliceBundle) {
         // now, bob can build a session cipher with which he can speak to alice
@@ -45,3 +50,30 @@ alice.freshIdentity(1, function (err, id) {
     })
   })
 })
+
+function replaceSignedPreKeyOccasionally (name, keyId, identity, keyserv, ms) {
+  function replace () {
+    identity.newSignedPreKey(keyId, function (err, signedPreKey) {
+      ks.replaceSignedPreKey(name, signedPreKey.sanitized, function (err) {
+        if (err) console.log('err?', err)
+      })
+    })
+  }
+  setInterval(replace, ms)
+  return
+}
+
+function uploadNewPreKeysWhenAsked (name, keyId, identity, keyserv) {
+  // if the keyserver says someone is low on unsigned prekeys,
+  keyserv.on('low-prekeys', function (username, numRemaining) {
+    if (username === 'alice') {
+      // they should generate more
+      identity.newUnsignedPreKeys(10, keyId, function (err, prekeys) {
+        // and upload them to the keyserver
+        keyserv.uploadUnsignedPreKeys(name, prekeys.sanitized, function (err) {
+          if (err) console.log('err!', err)
+        })
+      })
+    }
+  })
+}

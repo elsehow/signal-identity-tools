@@ -101,9 +101,11 @@ function freshIdentity (store, keyId, cb, opts={ nUnsignedPreKeys: 10 }) {
   }).catch(cb)
 }
 
-function newSignedPreKey (store, identity, keyId, cb) {
-  KeyHelper.generateSignedPreKey(identity.complete.identityKeyPair, keyId)
-    .then(function (signedPreKey) {
+function newSignedPreKey (store, keyId, cb) {
+  return store.getIdentityKeyPair()
+    .then(idKp => {
+      return KeyHelper.generateSignedPreKey(idKp, keyId)
+    }).then(signedPreKey => {
       store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
       let r = {
         complete: signedPreKey,
