@@ -9,41 +9,6 @@ let newDb = () => memdb({valueEncoding: valEncoding})
 let dbPath = '/tmp/kserver'
 
 
-//TODO
-test('what happens if someone uploads unsigned prekeys for someone else?', t => {
-  let ks = keyserver(newDb())
-  let alice = client(newDb())
-  let eve = client(newDb())
-  // alice will upload 1 prekey, registering as 'alice'
-  alice.freshIdentity(1, function (err, identity) {
-    ks.register('alice', identity.sanitized, function (err) {
-      // now we will remove her one bundle
-      ks.fetchPreKeyBundle('alice', function (err, _) {
-        // she has no more unsigned pre-keys, right?
-        ks.fetchPreKeyBundle('alice', function (err, bundle) {
-          t.equal(bundle.unsignedPreKeys.length, 0)
-          // now eve will publish some prekeys on alice's behalf...
-          eve.newUnsignedPreKeys(10, 1, function (err, prekeys) {
-            ks.uploadUnsignedPreKeys('alice', prekeys.sanitized, function (err) {
-              //now, can alice and bob start a conversation?
-              let bob = client(newDb())
-              bob.freshIdentity(1, function (err, bobIdentity) {
-                // and fetches alice's bundle
-                ks.fetchPreKeyBundle('alice', function (err, aliceBundle) {
-                  testConvo(aliceBundle, alice, bob, t).catch(t.notOk)
-                  t.end()
-                })
-              })
-            })
-          })
-        })
-      })
-    })
-  }, {
-    nUnsignedPreKeys:1
-  })
-})
-
 test('sanity', t => {
   t.ok(keyserver)
   t.deepEquals(typeof(keyserver), 'function')
@@ -208,44 +173,55 @@ test('UPLOAD ADDITONAL one-time prekeys', t => {
         t.equal(prekeys.sanitized.length, 10,
                 'prekes.sanitized is the right length')
         // replace on server
-        ks.uploadUnsignedPreKeys(n, prekeys.sanitized, function (err) {
-          // after starting with 2, uploading 10, and fetching 1,
-          // alice should have 11 unsigned prekeys
+        ks.fetchPreKeyBundle(n, function (err, bundle) {
+          t.notOk(err)
+          t.ok(bundle.preKey)
           ks.fetchPreKeyBundle(n, function (err, bundle) {
             t.notOk(err)
-            t.equal(bundle.unsignedPreKeys.length, 11)
-            t.end()
+            t.notOk(bundle.preKey)
+            ks.uploadUnsignedPreKeys(n, prekeys.sanitized, function (err) {
+              ks.fetchPreKeyBundle(n, function (err, bundle) {
+                t.notOk(err)
+                t.ok(bundle.preKey)
+                t.end()
+              })
+            })
           })
         })
       })
     })
   }, {
-    nUnsignedPreKeys: 2,
+    nUnsignedPreKeys: 1,
   })
 })
 
-// // TODO
-// // test('chat with NO ONE-TIME PREKEYS?', t => {
-// //   let ks = keyserver(h.dbAt())
-// //   myClient.freshIdentity(1, new SignalStore(), function (_, aliceIdentity) {
-// //     ks.register(ALICE_ADDRESS.getName(), aliceIdentity.sanitized, function (_, _) {
-// //       myClient.freshIdentity(1, new SignalStore(), function (_, bobIdentity) {
-// //         ks.register(BOB_ADDRESS.getName(), bobIdentity.sanitized, function (_, _) {
-// //           // use up the 1 unsigned prekey
-// //           ks.fetchPreKeyBundle(ALICE_ADDRESS.getName(), function (_, _) {
-// //             // this one should have no PreKey
-// //             ks.fetchPreKeyBundle(ALICE_ADDRESS.getName(), function (err, bundle) {
-// //               t.notOk(bundle.preKey, 'no prekeys here')
-// //               testConvo(bundle, aliceIdentity, bobIdentity, t)
-// //             })
-// //           })
-// //         })
-// //       })
-// //     })
-// //   }, {
-// //     nUnsignedPreKeys:1 // only generate 1 one-time prekey
-// //   })
-// // })
+test.skip('We can chat with NO ONE-TIME PREKEYS?', t => {
+  let ks = keyserver(newDb())
+  ks.on('low-prekeys', function (user, num) {
+    t.equal(num, 0, '0 remaining')
+  })
+  alice = client(newDb())
+  alice.freshIdentity(1, function (_, aliceIdentity) {
+    ks.register('alice', aliceIdentity.sanitized, function (_, _) {
+      bob = client(newDb())
+      bob.freshIdentity(1, function (_, bobIdentity) {
+        ks.register('bob', bobIdentity.sanitized, function (_, _) {
+          // use up the 1 unsigned prekey
+          ks.fetchPreKeyBundle('alice', function (_, _) {
+            // now, this one should have no PreKey
+            ks.fetchPreKeyBundle('alice', function (err, bundle) {
+              console.log(bundle)
+              t.notOk(bundle.preKey, 'no prekeys here')
+              testConvo(bundle, alice, bob, t)
+            })
+          })
+        })
+      })
+    })
+  }, {
+    nUnsignedPreKeys:1 // only generate 1 one-time prekey
+  })
+})
 
 test('SETUP and TAREDOWN and PERSIST', t => {
   let ks = keyserver(levelDb())
@@ -279,6 +255,42 @@ test.onFinish(() => {
     console.log('finished')
   })
 })
+
+// TODO
+test.skip('IMPT - Eve can disrupt Bob and Alice\'s communication by uploading unsigned prekeys for Alice.', t => {
+  let ks = keyserver(newDb())
+  let alice = client(newDb())
+  let eve = client(newDb())
+  // alice will upload 1 prekey, registering as 'alice'
+  alice.freshIdentity(1, function (err, identity) {
+    ks.register('alice', identity.sanitized, function (err) {
+      // now we will remove her one bundle
+      ks.fetchPreKeyBundle('alice', function (err, _) {
+        // she has no more unsigned pre-keys, right?
+        ks.fetchPreKeyBundle('alice', function (err, bundle) {
+          t.notOk(bundle.preKey)
+          // now eve will publish some prekeys on alice's behalf...
+          eve.newUnsignedPreKeys(10, 1, function (err, prekeys) {
+            ks.uploadUnsignedPreKeys('alice', prekeys.sanitized, function (err) {
+              //now, can alice and bob start a conversation?
+              let bob = client(newDb())
+              bob.freshIdentity(1, function (err, bobIdentity) {
+                // and fetches alice's bundle
+                ks.fetchPreKeyBundle('alice', function (err, aliceBundle) {
+                  testConvo(aliceBundle, alice, bob,t).catch(t.ok)
+                  t.end()
+                })
+             })
+            })
+          })
+        })
+      })
+    })
+  }, {
+    nUnsignedPreKeys:1
+  })
+})
+
 
 
 function testConvo (aliceBundle, aliceIdentity, bobIdentity, t) {

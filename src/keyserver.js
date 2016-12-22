@@ -36,19 +36,21 @@ module.exports = function (level, opts={ lowPreKeyThreshold: 10 }) {
   }
 
   function fetchPreKeyBundle (name, cb) {
-    let b;
     return update(name, function (bundle) {
       // make a presenable bundle for later
-      b=bundle
+      let b = omit(bundle, 'unsignedPreKeys')
       b.preKey= last(bundle.unsignedPreKeys)
-      b = omit(b, 'unsignedPreKeys')
       // now delete that prekey from the db
       bundle.unsignedPreKeys = initial(bundle.unsignedPreKeys)
-      // emit 'low-prekeys' event if necessary
-      let numRemaining = bundle.unsignedPreKeys.length
-      if (numRemaining <= opts.lowPreKeyThreshold)
-        emitter.emit('low-prekeys', name, numRemaining)
-      cb(null, bundle)
+      level.put(name, bundle, function (err, res) {
+        if (err)
+          cb(err)
+        // emit 'low-prekeys' event if necessary
+        let numRemaining = bundle.unsignedPreKeys.length
+        if (numRemaining <= opts.lowPreKeyThreshold)
+          emitter.emit('low-prekeys', name, numRemaining)
+        cb(null, b)
+      })
     })
   }
 
