@@ -1,6 +1,8 @@
 let equal = require('deep-equal')
-let isArrayBuffer = require('is-array-buffer');
+let isArrayBuffer = require('is-array-buffer')
 let isNumber = x => typeof(x) === 'number'
+let crypto = require('signal-protocol/src/crypto.js').crypto
+
 
 /*
   elsehow, 12/20/16
@@ -40,7 +42,7 @@ function firstNonNull (arr) {
   return null
 }
 function check (schema) {
-  return schema.reduce(function (acc, cur) {
+  let err = schema.reduce(function (acc, cur) {
     if (!acc) {
       let res =  cur[0]
       if (res)
@@ -49,6 +51,7 @@ function check (schema) {
     }
     return acc
   }, null)
+  return err
 }
 function hasOnlyProps (o, props) {
   return equal(
@@ -77,15 +80,15 @@ function validateSignedPreKey (p) {
   ]
   return check(schema)
 }
-// returns error (string) or null
-function validatePublicId (id) {
+// calls back on error (string) or null
+function validatePublicId (id, cb) {
   let props = ['registrationId', 'identityKey', 'signedPreKey', 'unsignedPreKeys']
   let errSignedPk = validateSignedPreKey(id.signedPreKey)
   if (errSignedPk)
-    return errSignedPk
+    return cb(errSignedPk)
   let errPks = validateUnsigned(id.unsignedPreKeys)
   if (errPks)
-    return errPks
+    return cb(errPks)
   // check each type is correct
   // [  [check, errorMsg], ... ]
   let schema = [
@@ -93,8 +96,22 @@ function validatePublicId (id) {
     [isNumber(id.registrationId), 'public ID should be a number'],
     [isArrayBuffer(id.identityKey), 'identityKey should be an ArrayBuffer'],
   ]
-  let err = check(schema)
-  return err
+  let valErr = check(schema)
+  if (valErr)
+    return cb(valErr)
+  // if nothing else is wrong,
+  // we verify the keys with some crypto
+  crypto.Ed25519Verify(
+    id.identityKey,
+    id.signedPreKey.publicKey,
+    id.signedPreKey.signature
+  ).catch(err => {
+    cb('Validation error ' + err)
+    return -1
+  }).then((res) => {
+    if (res!=-1)
+      cb()
+  })
 }
 
 module.exports = {

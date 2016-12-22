@@ -55,12 +55,27 @@ test('REGISTER a prekey', t => {
   })
 })
 
-test('bad prekey REJECT', t => {
+test('REJECT non-sanitized keys', t => {
   let ks = keyserver(newDb())
   let c = client(newDb())
   c.freshIdentity(1, function (err, identity) {
     // NO NO don't push your compelte identity
     let BADpubid = identity.complete
+    ks.register('elsehow', BADpubid, function (err) {
+      t.ok(err, err)
+      t.end()
+    })
+  })
+})
+
+
+test('REJECT a good sanitized identity with a bad key', t => {
+  let ks = keyserver(newDb())
+  let c = client(newDb())
+  c.freshIdentity(1, function (err, identity) {
+    // NO NO don't push your compelte identity
+    let BADpubid = identity.sanitized
+    BADpubid.signedPreKey.publicKey = new ArrayBuffer(33)
     ks.register('elsehow', BADpubid, function (err) {
       t.ok(err, err)
       t.end()

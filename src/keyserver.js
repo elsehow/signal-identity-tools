@@ -18,10 +18,11 @@ module.exports = function (level, opts={ lowPreKeyThreshold: 10 }) {
       if (value)
         return cb('Name already taken.')
       // validate the submitted id
-      let valErr = validate.publicId(publicIdentity)
-      if (valErr)
-        return cb(valErr)
-      return level.put(name, publicIdentity, cb)
+      validate.publicId(publicIdentity, function (valErr) {
+        if (valErr)
+          return cb(valErr)
+        return level.put(name, publicIdentity, cb)
+      })
     })
   }
 
