@@ -68,7 +68,7 @@ function uploadNewPreKeysWhenAsked (name, keyId, identity, keyserv) {
   keyserv.on('low-prekeys', function (username, numRemaining) {
     if (username === 'alice') {
       // they should generate more
-      identity.newUnsignedPreKeys(10, keyId, function (err, prekeys) {
+      identity.newUnsignedPreKeys(10, function (err, prekeys) {
         // and upload them to the keyserver
         keyserv.uploadUnsignedPreKeys(name, prekeys.sanitized, function (err) {
           if (err) console.log('err!', err)
