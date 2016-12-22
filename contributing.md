@@ -25,10 +25,10 @@ now you can edit js files in src/ and test/ - tests will automatically re-run
   - [x] Test it in keyserver
 - [x] Design an api for `client(level)`
   - [x] Guessing it will be level methods + idtools methods
-  - [ ] Methods also for session ciphers
-- [ ] Emit an event when a user's low on prekeys
-  - [ ] We handle the details of on the transport layer
-  
+  - [x] Methods also for session ciphers
+- [x] Emit an event when a user's low on prekeys
+  - [-] We handle the details of on the transport layer
+
 - [ ] Verifying keys?
   - [ ] New identities?
   - [ ] New signed prekeys?
@@ -38,7 +38,7 @@ now you can edit js files in src/ and test/ - tests will automatically re-run
 - [ ] Document the keyserver / client 
   - [ ] One for key management (of secret keys), the other servering (public) identities for many clients
   - [ ] Warning about how we don't do rate limiting
-
+  - [ ] Document opts n unsigned client, n unsinged low thresh on keyserver
 
 ## post-notes
 

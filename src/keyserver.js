@@ -1,9 +1,13 @@
-var validate = require('./validate')
-var last = arr => arr[arr.length-1]
-var initial = arr => arr.length ? arr.slice(0, arr.length-1) : []
-var omit = require('lodash.omit')
+let validate = require('./validate')
+let last = arr => arr[arr.length-1]
+let initial = arr => arr.length ? arr.slice(0, arr.length-1) : []
+let extend = require('extend')
+let omit = require('lodash.omit')
+let EventEmitter = require('events').EventEmitter
 
-module.exports = function (level) {
+module.exports = function (level, opts={ lowPreKeyThreshold: 10 }) {
+
+  let emitter = new EventEmitter()
 
   function register (name, publicIdentity, cb) {
     // TODO we could verify public identity with signatures ?
@@ -45,6 +49,10 @@ module.exports = function (level) {
       b = omit(b, 'unsignedPreKeys')
       // now delete that prekey from the db
       bundle.unsignedPreKeys = initial(bundle.unsignedPreKeys)
+      // emit 'low-prekeys' event if necessary
+      let numRemaining = bundle.unsignedPreKeys.length
+      if (numRemaining <= opts.lowPreKeyThreshold)
+        emitter.emit('low-prekeys', name, numRemaining)
       return bundle
     }, x => null, null, function (err) {
       if (err)
@@ -74,11 +82,14 @@ module.exports = function (level) {
     level.close(cb)
   }
 
-  return {
+  let methods = {
     register: register,
     fetchPreKeyBundle: fetchPreKeyBundle,
     replaceSignedPreKey: replaceSignedPreKey,
     uploadUnsignedPreKeys: uploadUnsignedPreKeys,
     close: close,
   }
+
+  let self = extend(emitter, methods)
+  return self
 }

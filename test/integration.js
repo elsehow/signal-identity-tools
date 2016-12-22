@@ -1,50 +1,12 @@
 let test = require('tape')
-var keyserver = require('../keyserver')
-var client = require('../client')
+let keyserver = require('../keyserver')
+let client = require('../client')
 let valEncoding = require('../levelValueEncoding')
 let memdb = require('memdb')
 let level = require('level')
 let levelDb = () => level(dbPath, {valueEncoding: valEncoding})
 let newDb = () => memdb({valueEncoding: valEncoding})
 let dbPath = '/tmp/kserver'
-
-
-function testConvo (aliceBundle, aliceIdentity, bobIdentity, t) {
-  // get signal to accept the pubkey bundle
-  var builder = bobIdentity.sessionBuilder('alice', 1)
-  return builder.processPreKey(aliceBundle)
-    .then(() => {
-      t.ok(aliceIdentity)
-      t.ok(bobIdentity)
-      var aliceSessionCipher = aliceIdentity.sessionCipher('bob', 1)
-      var bobSessionCipher = bobIdentity.sessionCipher('alice', 1)
-      return bobSessionCipher
-        .encrypt(new Buffer('hello'))
-        .then(ct => {
-          t.equal(ct.type, 3,
-                  'ciphertext.type should be 3, preKeyWhisperMessage')
-          t.ok(ct.body)
-          return ct
-        })
-        .then(ct =>
-              aliceSessionCipher.decryptPreKeyWhisperMessage(ct.body, 'binary'))
-        .then(() => aliceSessionCipher.encrypt('hello sweet world'))
-        .then(ct => {
-          t.equal(ct.type, 1,
-                  'ciphertext.type should be 1, whisperMessage')
-          t.ok(ct.body)
-          return ct
-        })
-        .then(ct =>
-              bobSessionCipher.decryptWhisperMessage(ct.body, 'binary'))
-        .then(pt => {
-          ptStr = new Buffer(pt).toString()
-          t.deepEqual(ptStr, 'hello sweet world',
-                      'round trip encrypt works')
-          t.end()
-        }).catch(t.notOk)
-    }).catch(t.notOk)
-}
 
 test('sanity', t => {
   t.ok(keyserver)
@@ -57,6 +19,27 @@ test('sanity', t => {
   t.ok(client)
   t.deepEquals(typeof(client), 'function')
   t.end()
+})
+
+test('emit LOW-PREKEYS event when a user is low', t => {
+  let ks = keyserver(newDb(), {
+    lowPreKeyThreshold: 19, // when a user has only 19 prekeys left,
+  })                        // we will emit a 'low-prekeys' event
+  let c = client(newDb())
+  c.freshIdentity(1, function (err, identity) {
+    // use the sanitized identity for public keyserver
+    let pubid = identity.sanitized
+    ks.on('low-prekeys', function (username, numRemaining) {
+      t.equal(numRemaining, 19)
+      t.deepEqual(username, 'elsehow')
+      t.end()
+    })
+    ks.register('elsehow', pubid, function (err) {
+      ks.fetchPreKeyBundle('elsehow', () => {})
+    })
+  }, {
+    nUnsignedPreKeys: 20
+  })
 })
 
 test('REGISTER a prekey', t => {
@@ -207,3 +190,41 @@ test.onFinish(() => {
     console.log('finished')
   })
 })
+
+
+function testConvo (aliceBundle, aliceIdentity, bobIdentity, t) {
+  // get signal to accept the pubkey bundle
+  let builder = bobIdentity.sessionBuilder('alice', 1)
+  return builder.processPreKey(aliceBundle)
+    .then(() => {
+      t.ok(aliceIdentity)
+      t.ok(bobIdentity)
+      let aliceSessionCipher = aliceIdentity.sessionCipher('bob', 1)
+      let bobSessionCipher = bobIdentity.sessionCipher('alice', 1)
+      return bobSessionCipher
+        .encrypt(new Buffer('hello'))
+        .then(ct => {
+          t.equal(ct.type, 3,
+                  'ciphertext.type should be 3, preKeyWhisperMessage')
+          t.ok(ct.body)
+          return ct
+        })
+        .then(ct =>
+              aliceSessionCipher.decryptPreKeyWhisperMessage(ct.body, 'binary'))
+        .then(() => aliceSessionCipher.encrypt('hello sweet world'))
+        .then(ct => {
+          t.equal(ct.type, 1,
+                  'ciphertext.type should be 1, whisperMessage')
+          t.ok(ct.body)
+          return ct
+        })
+        .then(ct =>
+              bobSessionCipher.decryptWhisperMessage(ct.body, 'binary'))
+        .then(pt => {
+          ptStr = new Buffer(pt).toString()
+          t.deepEqual(ptStr, 'hello sweet world',
+                      'round trip encrypt works')
+          t.end()
+        }).catch(t.notOk)
+    }).catch(t.notOk)
+}
