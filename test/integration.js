@@ -125,6 +125,31 @@ test('REPLACE signed prekey', t => {
   })
 })
 
+test('REJECT invalid prekey replacement', t => {
+  let ks = keyserver(newDb())
+  let alice = client(newDb())
+  let n = 'alice'
+  // alice generates an ID
+  alice.freshIdentity(1, function (err, aliceIdentity) {
+    let aliceSanitized = aliceIdentity.sanitized
+    // alice registers
+    ks.register(n, aliceSanitized, function (err, id) {
+      alice.newSignedPreKey(1, function (err, signedPreKey) {
+        t.notOk(err)
+        t.ok(signedPreKey)
+        // phony signature
+        let san = signedPreKey.sanitized
+        san.signature = new ArrayBuffer(64)
+        // try to replace on server
+        ks.replaceSignedPreKey(n, san, function (err) {
+          t.ok(err)
+          t.end()
+        })
+      })
+    })
+  })
+})
+
 test('UPLOAD ADDITONAL one-time prekeys', t => {
   let ks = keyserver(newDb())
   let alice = client(newDb())
