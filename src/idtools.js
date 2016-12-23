@@ -84,7 +84,7 @@ function freshIdentity (store, keyId, cb, opts={ nUnsignedPreKeys: 10 }) {
         identity.identityKeyPair = idKp
         return Promise.all([
           store.put('identityKey', idKp),
-          KeyHelper.generateSignedPreKey(idKp, keyId)
+          KeyHelper.generateSignedPreKey(idKp, uuid())
         ])
       }).then((res) => {
         let signedPreKey = res[1]
@@ -106,10 +106,10 @@ function freshIdentity (store, keyId, cb, opts={ nUnsignedPreKeys: 10 }) {
   }).catch(cb)
 }
 
-function newSignedPreKey (store, keyId, cb) {
+function newSignedPreKey (store, cb) {
   return store.getIdentityKeyPair()
     .then(idKp => {
-      return KeyHelper.generateSignedPreKey(idKp, keyId)
+      return KeyHelper.generateSignedPreKey(idKp, uuid())
     }).then(signedPreKey => {
       store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
       let r = {

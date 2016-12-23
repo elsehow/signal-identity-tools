@@ -109,23 +109,32 @@ test('REPLACE signed prekey', t => {
   let newSprK;
   let ks = keyserver(newDb())
   let alice = client(newDb())
+  let bob = client(newDb())
   let n = 'alice'
   // alice generates an ID
   alice.freshIdentity(1, function (err, aliceIdentity) {
-    let aliceSanitized = aliceIdentity.sanitized
-    // alice registers
-    ks.register(n, aliceSanitized, function (err, id) {
-      alice.newSignedPreKey(1, function (err, signedPreKey) {
-        t.notOk(err)
-        t.ok(signedPreKey)
-        newSprK = signedPreKey.sanitized
-        // replace on server
-        ks.replaceSignedPreKey(n, signedPreKey.sanitized, function (err) {
-          t.notOk(err)
-          ks.fetchPreKeyBundle(n, function (err, bundle) {
+    bob.freshIdentity(1, function (_, _) {
+      let aliceSanitized = aliceIdentity.sanitized
+      // alice registers
+      ks.register(n, aliceSanitized, function (err, id) {
+        // bob fetches alice's bundle before she changes her pre key.
+        ks.fetchPreKeyBundle(n, function (err, oldBundle) {
+          alice.newSignedPreKey(function (err, signedPreKey) {
             t.notOk(err)
-            t.deepEqual(bundle.signedPreKey, newSprK)
-            t.end()
+            t.ok(signedPreKey)
+            // replace on server
+            ks.replaceSignedPreKey(n, signedPreKey.sanitized, function (err) {
+              t.notOk(err)
+              ks.fetchPreKeyBundle(n, function (err, bundle) {
+                t.notOk(err)
+                t.deepEqual(bundle.signedPreKey, signedPreKey.sanitized)
+                // uh oh! bob will try to start talking to alice iwth her old signed pre key
+                // will it still work?
+                testConvo(oldBundle, 'alice', 'bob', alice, bob, t)
+                  .catch(t.notOk)
+                  .then(t.end)
+              })
+            })
           })
         })
       })
@@ -142,7 +151,7 @@ test('REJECT invalid prekey replacement', t => {
     let aliceSanitized = aliceIdentity.sanitized
     // alice registers
     ks.register(n, aliceSanitized, function (err, id) {
-      alice.newSignedPreKey(1, function (err, signedPreKey) {
+      alice.newSignedPreKey(function (err, signedPreKey) {
         spk = signedPreKey
         t.notOk(err)
         t.ok(signedPreKey)
